@@ -85,9 +85,19 @@ namespace ScreenReader
                             "rus",
                             EngineMode.Default);
 
-                    using Pix image = PixConverter.ToPix(screenshot);
+                    using MemoryStream stream = new MemoryStream();
 
-                    using Page page = engine.Process(image);
+                    screenshot.Save(
+                        stream,
+                        ImageFormat.Png);
+
+                    byte[] imageBytes = stream.ToArray();
+
+                    using Pix image =
+                        Pix.LoadFromMemory(imageBytes);
+
+                    using Page page =
+                        engine.Process(image);
 
                     string text = page.GetText();
 
