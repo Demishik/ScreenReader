@@ -134,9 +134,9 @@ namespace ScreenReader
                 }
             }
 
-            // ---------------------------------------------------------
+            // =========================================================
             // НАСТРОЙКА ОБЛАСТЕЙ
-            // ---------------------------------------------------------
+            // =========================================================
 
             setupButton.Click += (sender, e) =>
             {
@@ -172,9 +172,9 @@ namespace ScreenReader
                 }
             };
 
-            // ---------------------------------------------------------
+            // =========================================================
             // НАСТРОЙКА ПЛОЩАДОК
-            // ---------------------------------------------------------
+            // =========================================================
 
             platformButton.Click += (sender, e) =>
             {
@@ -221,9 +221,9 @@ namespace ScreenReader
                 }
             };
 
-            // ---------------------------------------------------------
+            // =========================================================
             // СЧИТЫВАНИЕ ОДНОЙ СТРОКИ
-            // ---------------------------------------------------------
+            // =========================================================
 
             readButton.Click += (sender, e) =>
             {
@@ -304,7 +304,66 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // ВЫБОР ПЛОЩАДОК
+        // НАСТРОЙКА ПЯТИ ОБЛАСТЕЙ
+        // =============================================================
+
+        private static Dictionary<string, Rectangle> SelectAreas(
+            Form form)
+        {
+            Dictionary<string, Rectangle> areas =
+                new Dictionary<string, Rectangle>();
+
+            form.Hide();
+
+            Application.DoEvents();
+
+            System.Threading.Thread.Sleep(300);
+
+            using Bitmap screenshot =
+                CaptureScreen();
+
+            for (int i = 0; i < AreaNames.Length; i++)
+            {
+                using SelectionForm selectionForm =
+                    new SelectionForm(
+                        screenshot,
+                        AreaNames[i]);
+
+                DialogResult dialogResult =
+                    selectionForm.ShowDialog();
+
+                if (dialogResult != DialogResult.OK)
+                {
+                    form.Show();
+                    form.Activate();
+
+                    return areas;
+                }
+
+                Rectangle rectangle =
+                    selectionForm.SelectedRectangle;
+
+                if (rectangle.Width <= 5 ||
+                    rectangle.Height <= 5)
+                {
+                    form.Show();
+                    form.Activate();
+
+                    return areas;
+                }
+
+                areas[AreaNames[i]] =
+                    rectangle;
+            }
+
+            form.Show();
+            form.Activate();
+
+            return areas;
+        }
+
+        // =============================================================
+        // НАСТРОЙКА ПЛОЩАДОК
         // =============================================================
 
         private static List<PlatformInfo> SelectPlatforms(
@@ -433,7 +492,7 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // OCR
+        // OCR SPARSE TEXT
         // =============================================================
 
         private static string RunSparseOcr(
@@ -479,7 +538,7 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // УВЕЛИЧЕНИЕ
+        // УВЕЛИЧЕНИЕ ИЗОБРАЖЕНИЯ
         // =============================================================
 
         private static Bitmap ResizeImage(
@@ -711,7 +770,7 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // КЛАСС ПЛОЩАДКИ
+        // ИНФОРМАЦИЯ О ПЛОЩАДКЕ
         // =============================================================
 
         private class PlatformInfo
@@ -789,8 +848,7 @@ namespace ScreenReader
                 ClientRectangle);
 
             using SolidBrush textBrush =
-                new SolidBrush(
-                    Color.White);
+                new SolidBrush(Color.White);
 
             using Font font =
                 new Font(
