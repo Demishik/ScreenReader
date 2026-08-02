@@ -89,7 +89,7 @@ namespace ScreenReader
 
                     screenshot.Save(
                         stream,
-                        ImageFormat.Png);
+                        System.Drawing.Imaging.ImageFormat.Png);
 
                     byte[] imageBytes = stream.ToArray();
 
