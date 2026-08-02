@@ -12,10 +12,14 @@ namespace ScreenReader
     internal static class Program
     {
         private static readonly string AreasFile =
-            Path.Combine(AppContext.BaseDirectory, "areas.txt");
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "areas.txt");
 
         private static readonly string PlatformsFile =
-            Path.Combine(AppContext.BaseDirectory, "platforms.txt");
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "platforms.txt");
 
         private static readonly string[] AreaNames =
         {
@@ -34,7 +38,8 @@ namespace ScreenReader
             Form form = new Form
             {
                 Text = "ScreenReader — чтение данных",
-                StartPosition = FormStartPosition.CenterScreen,
+                StartPosition =
+                    FormStartPosition.CenterScreen,
                 Width = 1200,
                 Height = 800
             };
@@ -42,63 +47,94 @@ namespace ScreenReader
             Label title = new Label
             {
                 Text = "Чтение данных корпуса",
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                Font =
+                    new Font(
+                        "Segoe UI",
+                        16,
+                        FontStyle.Bold),
                 AutoSize = true,
-                Location = new Point(20, 20)
+                Location =
+                    new Point(20, 20)
             };
 
             Label instruction = new Label
             {
                 Text =
-                    "Настрой области и площадки. После этого программа сможет читать строки автоматически.",
-                Font = new Font("Segoe UI", 10),
+                    "Настрой области и площадки. " +
+                    "После этого программа сможет читать строки автоматически.",
+                Font =
+                    new Font(
+                        "Segoe UI",
+                        10),
                 AutoSize = true,
-                Location = new Point(20, 50)
+                Location =
+                    new Point(20, 50)
             };
 
             Button setupButton = new Button
             {
                 Text = "Настроить области",
-                Font = new Font("Segoe UI", 11),
+                Font =
+                    new Font(
+                        "Segoe UI",
+                        11),
                 Width = 220,
                 Height = 45,
-                Location = new Point(20, 80)
+                Location =
+                    new Point(20, 80)
             };
 
             Button platformButton = new Button
             {
                 Text = "Настроить площадки",
-                Font = new Font("Segoe UI", 11),
+                Font =
+                    new Font(
+                        "Segoe UI",
+                        11),
                 Width = 220,
                 Height = 45,
-                Location = new Point(255, 80)
+                Location =
+                    new Point(255, 80)
             };
 
             Button showRowsButton = new Button
             {
                 Text = "Показать строки",
-                Font = new Font("Segoe UI", 11),
+                Font =
+                    new Font(
+                        "Segoe UI",
+                        11),
                 Width = 220,
                 Height = 45,
-                Location = new Point(490, 80)
+                Location =
+                    new Point(490, 80)
             };
 
             Button readButton = new Button
             {
                 Text = "Считать данные",
-                Font = new Font("Segoe UI", 11),
+                Font =
+                    new Font(
+                        "Segoe UI",
+                        11),
                 Width = 220,
                 Height = 45,
-                Location = new Point(725, 80)
+                Location =
+                    new Point(725, 80)
             };
 
             TextBox result = new TextBox
             {
                 Multiline = true,
                 ReadOnly = true,
-                ScrollBars = ScrollBars.Vertical,
-                Font = new Font("Consolas", 12),
-                Location = new Point(20, 145),
+                ScrollBars =
+                    ScrollBars.Vertical,
+                Font =
+                    new Font(
+                        "Consolas",
+                        12),
+                Location =
+                    new Point(20, 145),
                 Width = 1140,
                 Height = 560
             };
@@ -120,7 +156,8 @@ namespace ScreenReader
             if (areas.Count == AreaNames.Length)
             {
                 result.Text =
-                    "Области загружены из areas.txt.\r\n\r\n";
+                    "Области загружены из areas.txt.\r\n\r\n" +
+                    "Можно нажать «Считать данные».";
             }
             else
             {
@@ -132,9 +169,11 @@ namespace ScreenReader
             if (platforms.Count > 0)
             {
                 result.AppendText(
-                    "Площадки загружены:\r\n\r\n");
+                    "\r\nПлощадки загружены:\r\n\r\n");
 
-                foreach (PlatformInfo platform in platforms)
+                foreach (
+                    PlatformInfo platform
+                    in platforms)
                 {
                     result.AppendText(
                         $"Площадка {platform.Number}\r\n" +
@@ -155,7 +194,8 @@ namespace ScreenReader
                     Dictionary<string, Rectangle> newAreas =
                         SelectAreas(form);
 
-                    if (newAreas.Count != AreaNames.Length)
+                    if (newAreas.Count !=
+                        AreaNames.Length)
                     {
                         return;
                     }
@@ -169,7 +209,7 @@ namespace ScreenReader
                         "Файл:\r\n" +
                         AreasFile +
                         "\r\n\r\n" +
-                        "Теперь можно настроить площадки.";
+                        "Теперь можно нажать «Считать данные».";
                 }
                 catch (Exception ex)
                 {
@@ -177,7 +217,7 @@ namespace ScreenReader
                     form.Activate();
 
                     result.Text =
-                        "ОШИБКА НАСТРОЙКИ ОБЛАСТЕЙ:\r\n\r\n" +
+                        "ОШИБКА НАСТРОЙКИ:\r\n\r\n" +
                         ex.Message;
                 }
             };
@@ -211,13 +251,18 @@ namespace ScreenReader
                         PlatformsFile +
                         "\r\n\r\n";
 
-                    foreach (PlatformInfo platform in platforms)
+                    foreach (
+                        PlatformInfo platform
+                        in platforms)
                     {
                         result.AppendText(
                             $"Площадка {platform.Number}\r\n" +
                             $"Первая строка Y: {platform.FirstRowY}\r\n" +
                             $"Вторая строка Y: {platform.SecondRowY}\r\n" +
-                            $"Шаг между корпусами: {platform.RowStep}\r\n\r\n");
+                            $"Шаг между корпусами: {platform.RowStep}\r\n" +
+                            $"Высота строки: {platform.RowHeight}\r\n" +
+                            $"X: {platform.RowX}\r\n" +
+                            $"Ширина: {platform.RowWidth}\r\n\r\n");
                     }
                 }
                 catch (Exception ex)
@@ -241,6 +286,7 @@ namespace ScreenReader
                 {
                     result.Text =
                         "Сначала нужно настроить площадки.";
+
                     return;
                 }
 
@@ -267,8 +313,8 @@ namespace ScreenReader
 
                     result.Text =
                         "Проверка строк завершена.\r\n\r\n" +
-                        "Если рамки точно попадают на строки корпусов, " +
-                        "можем переходить к автоматическому чтению.";
+                        "Если рамки попадают точно на строки " +
+                        "корпусов, переходим к автоматическому чтению.";
                 }
                 catch (Exception ex)
                 {
@@ -287,7 +333,8 @@ namespace ScreenReader
 
             readButton.Click += (sender, e) =>
             {
-                if (areas.Count != AreaNames.Length)
+                if (areas.Count !=
+                    AreaNames.Length)
                 {
                     result.Text =
                         "Сначала нужно настроить области.";
@@ -308,7 +355,10 @@ namespace ScreenReader
                     string[] values =
                         new string[AreaNames.Length];
 
-                    for (int i = 0; i < AreaNames.Length; i++)
+                    for (
+                        int i = 0;
+                        i < AreaNames.Length;
+                        i++)
                     {
                         string name =
                             AreaNames[i];
@@ -322,7 +372,8 @@ namespace ScreenReader
                                 PixelFormat.Format32bppArgb);
 
                         values[i] =
-                            RunSparseOcr(crop).Trim();
+                            RunSparseOcr(
+                                crop).Trim();
                     }
 
                     string text =
@@ -367,10 +418,10 @@ namespace ScreenReader
         // НАСТРОЙКА ПЯТИ ОБЛАСТЕЙ
         // =============================================================
 
-        private static Dictionary<string, Rectangle> SelectAreas(
-            Form form)
+        private static Dictionary<string, Rectangle>
+            SelectAreas(Form form)
         {
-            Dictionary<string, Rectangle> areas =
+            Dictionary<string, Rectangle> result =
                 new Dictionary<string, Rectangle>();
 
             form.Hide();
@@ -382,7 +433,10 @@ namespace ScreenReader
             using Bitmap screenshot =
                 CaptureScreen();
 
-            for (int i = 0; i < AreaNames.Length; i++)
+            for (
+                int i = 0;
+                i < AreaNames.Length;
+                i++)
             {
                 using SelectionForm selectionForm =
                     new SelectionForm(
@@ -392,12 +446,13 @@ namespace ScreenReader
                 DialogResult dialogResult =
                     selectionForm.ShowDialog();
 
-                if (dialogResult != DialogResult.OK)
+                if (dialogResult !=
+                    DialogResult.OK)
                 {
                     form.Show();
                     form.Activate();
 
-                    return areas;
+                    return result;
                 }
 
                 Rectangle rectangle =
@@ -409,25 +464,25 @@ namespace ScreenReader
                     form.Show();
                     form.Activate();
 
-                    return areas;
+                    return result;
                 }
 
-                areas[AreaNames[i]] =
+                result[AreaNames[i]] =
                     rectangle;
             }
 
             form.Show();
             form.Activate();
 
-            return areas;
+            return result;
         }
 
         // =============================================================
         // НАСТРОЙКА ПЛОЩАДОК
         // =============================================================
 
-        private static List<PlatformInfo> SelectPlatforms(
-            Form form)
+        private static List<PlatformInfo>
+            SelectPlatforms(Form form)
         {
             List<PlatformInfo> platforms =
                 new List<PlatformInfo>();
@@ -441,9 +496,10 @@ namespace ScreenReader
             using Bitmap screenshot =
                 CaptureScreen();
 
-            for (int platformNumber = 1;
-                 platformNumber <= 2;
-                 platformNumber++)
+            for (
+                int platformNumber = 1;
+                platformNumber <= 2;
+                platformNumber++)
             {
                 using SelectionForm firstSelection =
                     new SelectionForm(
@@ -453,7 +509,8 @@ namespace ScreenReader
                 DialogResult firstResult =
                     firstSelection.ShowDialog();
 
-                if (firstResult != DialogResult.OK)
+                if (firstResult !=
+                    DialogResult.OK)
                 {
                     form.Show();
                     form.Activate();
@@ -472,7 +529,8 @@ namespace ScreenReader
                 DialogResult secondResult =
                     secondSelection.ShowDialog();
 
-                if (secondResult != DialogResult.OK)
+                if (secondResult !=
+                    DialogResult.OK)
                 {
                     form.Show();
                     form.Activate();
@@ -490,13 +548,16 @@ namespace ScreenReader
                     secondRectangle.Y;
 
                 int step =
-                    Math.Abs(secondY - firstY);
+                    Math.Abs(
+                        secondY -
+                        firstY);
 
                 if (step <= 0)
                 {
                     MessageBox.Show(
                         form,
-                        "Не удалось определить расстояние между строками.",
+                        "Не удалось определить расстояние " +
+                        "между строками.",
                         "Ошибка",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
@@ -510,10 +571,17 @@ namespace ScreenReader
                 platforms.Add(
                     new PlatformInfo
                     {
-                        Number = platformNumber,
-                        FirstRowY = firstY,
-                        SecondRowY = secondY,
-                        RowStep = step,
+                        Number =
+                            platformNumber,
+
+                        FirstRowY =
+                            firstY,
+
+                        SecondRowY =
+                            secondY,
+
+                        RowStep =
+                            step,
 
                         RowHeight =
                             firstRectangle.Height,
@@ -548,7 +616,8 @@ namespace ScreenReader
                     PixelFormat.Format32bppArgb);
 
             using Graphics graphics =
-                Graphics.FromImage(screenshot);
+                Graphics.FromImage(
+                    screenshot);
 
             graphics.CopyFromScreen(
                 screenBounds.Left,
@@ -568,7 +637,9 @@ namespace ScreenReader
             Bitmap source)
         {
             using Bitmap enlarged =
-                ResizeImage(source, 3);
+                ResizeImage(
+                    source,
+                    3);
 
             string tessdataPath =
                 Path.Combine(
@@ -596,7 +667,8 @@ namespace ScreenReader
                 stream.ToArray();
 
             using Pix pix =
-                Pix.LoadFromMemory(bytes);
+                Pix.LoadFromMemory(
+                    bytes);
 
             using Page page =
                 engine.Process(
@@ -621,7 +693,8 @@ namespace ScreenReader
                     PixelFormat.Format24bppRgb);
 
             using Graphics graphics =
-                Graphics.FromImage(result);
+                Graphics.FromImage(
+                    result);
 
             graphics.InterpolationMode =
                 InterpolationMode.HighQualityBicubic;
@@ -655,13 +728,16 @@ namespace ScreenReader
                     AreasFile,
                     false);
 
-            foreach (string name in AreaNames)
+            foreach (
+                string name
+                in AreaNames)
             {
                 Rectangle r =
                     areas[name];
 
                 writer.WriteLine(
-                    $"{name}|{r.X}|{r.Y}|{r.Width}|{r.Height}");
+                    $"{name}|{r.X}|{r.Y}|" +
+                    $"{r.Width}|{r.Height}");
             }
         }
 
@@ -669,7 +745,8 @@ namespace ScreenReader
         // ЗАГРУЗКА ОБЛАСТЕЙ
         // =============================================================
 
-        private static Dictionary<string, Rectangle> LoadAreas()
+        private static Dictionary<string, Rectangle>
+            LoadAreas()
         {
             Dictionary<string, Rectangle> areas =
                 new Dictionary<string, Rectangle>();
@@ -682,9 +759,12 @@ namespace ScreenReader
             try
             {
                 string[] lines =
-                    File.ReadAllLines(AreasFile);
+                    File.ReadAllLines(
+                        AreasFile);
 
-                foreach (string line in lines)
+                foreach (
+                    string line
+                    in lines)
                 {
                     string[] parts =
                         line.Split('|');
@@ -753,7 +833,9 @@ namespace ScreenReader
                     PlatformsFile,
                     false);
 
-            foreach (PlatformInfo platform in platforms)
+            foreach (
+                PlatformInfo platform
+                in platforms)
             {
                 writer.WriteLine(
                     $"{platform.Number}|" +
@@ -770,12 +852,14 @@ namespace ScreenReader
         // ЗАГРУЗКА ПЛОЩАДОК
         // =============================================================
 
-        private static List<PlatformInfo> LoadPlatforms()
+        private static List<PlatformInfo>
+            LoadPlatforms()
         {
             List<PlatformInfo> platforms =
                 new List<PlatformInfo>();
 
-            if (!File.Exists(PlatformsFile))
+            if (!File.Exists(
+                    PlatformsFile))
             {
                 return platforms;
             }
@@ -783,15 +867,20 @@ namespace ScreenReader
             try
             {
                 string[] lines =
-                    File.ReadAllLines(PlatformsFile);
+                    File.ReadAllLines(
+                        PlatformsFile);
 
-                foreach (string line in lines)
+                foreach (
+                    string line
+                    in lines)
                 {
                     string[] parts =
                         line.Split('|');
 
                     // Старый формат:
+                    //
                     // Number|FirstY|SecondY|Step
+                    //
                     if (parts.Length == 4)
                     {
                         if (!int.TryParse(
@@ -825,21 +914,37 @@ namespace ScreenReader
                         platforms.Add(
                             new PlatformInfo
                             {
-                                Number = number,
-                                FirstRowY = firstY,
-                                SecondRowY = secondY,
-                                RowStep = step,
+                                Number =
+                                    number,
 
-                                RowHeight = 20,
-                                RowX = 0,
-                                RowWidth = 800
+                                FirstRowY =
+                                    firstY,
+
+                                SecondRowY =
+                                    secondY,
+
+                                RowStep =
+                                    step,
+
+                                RowHeight =
+                                    20,
+
+                                RowX =
+                                    0,
+
+                                RowWidth =
+                                    800
                             });
 
                         continue;
                     }
 
                     // Новый формат:
-                    // Number|FirstY|SecondY|Step|Height|X|Width
+                    //
+                    // Number|FirstY|SecondY|Step|
+                    // Height|X|Width
+                    //
+
                     if (parts.Length != 7)
                     {
                         continue;
@@ -897,13 +1002,26 @@ namespace ScreenReader
                     platforms.Add(
                         new PlatformInfo
                         {
-                            Number = newNumber,
-                            FirstRowY = newFirstY,
-                            SecondRowY = newSecondY,
-                            RowStep = newStep,
-                            RowHeight = newHeight,
-                            RowX = newX,
-                            RowWidth = newWidth
+                            Number =
+                                newNumber,
+
+                            FirstRowY =
+                                newFirstY,
+
+                            SecondRowY =
+                                newSecondY,
+
+                            RowStep =
+                                newStep,
+
+                            RowHeight =
+                                newHeight,
+
+                            RowX =
+                                newX,
+
+                            RowWidth =
+                                newWidth
                         });
                 }
             }
@@ -914,27 +1032,27 @@ namespace ScreenReader
 
             return platforms;
         }
+    }
 
-        // =============================================================
-        // ИНФОРМАЦИЯ О ПЛОЩАДКЕ
-        // =============================================================
+    // =================================================================
+    // ИНФОРМАЦИЯ О ПЛОЩАДКЕ
+    // =================================================================
 
-        public class PlatformInfo
-        {
-            public int Number { get; set; }
+    public class PlatformInfo
+    {
+        public int Number { get; set; }
 
-            public int FirstRowY { get; set; }
+        public int FirstRowY { get; set; }
 
-            public int SecondRowY { get; set; }
+        public int SecondRowY { get; set; }
 
-            public int RowStep { get; set; }
+        public int RowStep { get; set; }
 
-            public int RowHeight { get; set; }
+        public int RowHeight { get; set; }
 
-            public int RowX { get; set; }
+        public int RowX { get; set; }
 
-            public int RowWidth { get; set; }
-        }
+        public int RowWidth { get; set; }
     }
 
     // =================================================================
@@ -944,21 +1062,30 @@ namespace ScreenReader
     public class SelectionForm : Form
     {
         private readonly Bitmap screenshot;
+
         private readonly string areaName;
 
         private Point startPoint;
+
         private Point currentPoint;
 
         private bool selecting;
 
-        public Rectangle SelectedRectangle { get; private set; }
+        public Rectangle SelectedRectangle
+        {
+            get;
+            private set;
+        }
 
         public SelectionForm(
             Bitmap screenshot,
             string areaName)
         {
-            this.screenshot = screenshot;
-            this.areaName = areaName;
+            this.screenshot =
+                screenshot;
+
+            this.areaName =
+                areaName;
 
             FormBorderStyle =
                 FormBorderStyle.None;
@@ -970,14 +1097,25 @@ namespace ScreenReader
                 Screen.PrimaryScreen.Bounds;
 
             TopMost = true;
-            Cursor = Cursors.Cross;
+
+            Cursor =
+                Cursors.Cross;
+
             DoubleBuffered = true;
+
             KeyPreview = true;
 
-            MouseDown += SelectionForm_MouseDown;
-            MouseMove += SelectionForm_MouseMove;
-            MouseUp += SelectionForm_MouseUp;
-            KeyDown += SelectionForm_KeyDown;
+            MouseDown +=
+                SelectionForm_MouseDown;
+
+            MouseMove +=
+                SelectionForm_MouseMove;
+
+            MouseUp +=
+                SelectionForm_MouseUp;
+
+            KeyDown +=
+                SelectionForm_KeyDown;
         }
 
         protected override void OnPaint(
@@ -1000,7 +1138,8 @@ namespace ScreenReader
                 ClientRectangle);
 
             using SolidBrush textBrush =
-                new SolidBrush(Color.White);
+                new SolidBrush(
+                    Color.White);
 
             using Font font =
                 new Font(
@@ -1009,7 +1148,8 @@ namespace ScreenReader
                     FontStyle.Bold);
 
             e.Graphics.DrawString(
-                "Выберите: " + areaName,
+                "Выберите: " +
+                areaName,
                 font,
                 textBrush,
                 20,
@@ -1047,15 +1187,19 @@ namespace ScreenReader
             object? sender,
             MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left)
+            if (e.Button !=
+                MouseButtons.Left)
             {
                 return;
             }
 
             selecting = true;
 
-            startPoint = e.Location;
-            currentPoint = e.Location;
+            startPoint =
+                e.Location;
+
+            currentPoint =
+                e.Location;
 
             Invalidate();
         }
@@ -1069,7 +1213,8 @@ namespace ScreenReader
                 return;
             }
 
-            currentPoint = e.Location;
+            currentPoint =
+                e.Location;
 
             Invalidate();
         }
@@ -1078,14 +1223,16 @@ namespace ScreenReader
             object? sender,
             MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left)
+            if (e.Button !=
+                MouseButtons.Left)
             {
                 return;
             }
 
             selecting = false;
 
-            currentPoint = e.Location;
+            currentPoint =
+                e.Location;
 
             SelectedRectangle =
                 GetRectangle(
@@ -1108,7 +1255,8 @@ namespace ScreenReader
             object? sender,
             KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Escape)
+            if (e.KeyCode ==
+                Keys.Escape)
             {
                 DialogResult =
                     DialogResult.Cancel;
@@ -1150,20 +1298,24 @@ namespace ScreenReader
     }
 
     // =================================================================
-    // ОКНО ПРОВЕРКИ РАССЧИТАННЫХ СТРОК
+    // ОКНО ПРОВЕРКИ СТРОК
     // =================================================================
 
     public class RowPreviewForm : Form
     {
         private readonly Bitmap screenshot;
-        private readonly List<Program.PlatformInfo> platforms;
+
+        private readonly List<PlatformInfo> platforms;
 
         public RowPreviewForm(
             Bitmap screenshot,
-            List<Program.PlatformInfo> platforms)
+            List<PlatformInfo> platforms)
         {
-            this.screenshot = screenshot;
-            this.platforms = platforms;
+            this.screenshot =
+                screenshot;
+
+            this.platforms =
+                platforms;
 
             FormBorderStyle =
                 FormBorderStyle.None;
@@ -1175,11 +1327,13 @@ namespace ScreenReader
                 Screen.PrimaryScreen.Bounds;
 
             TopMost = true;
-            DoubleBuffered = true;
-            KeyPreview = true;
-            Cursor = Cursors.Default;
 
-            KeyDown += RowPreviewForm_KeyDown;
+            DoubleBuffered = true;
+
+            KeyPreview = true;
+
+            KeyDown +=
+                RowPreviewForm_KeyDown;
         }
 
         protected override void OnPaint(
@@ -1194,15 +1348,15 @@ namespace ScreenReader
             using SolidBrush background =
                 new SolidBrush(
                     Color.FromArgb(
-                        150,
+                        170,
                         Color.Black));
 
             e.Graphics.FillRectangle(
                 background,
                 0,
                 0,
-                520,
-                85);
+                560,
+                95);
 
             using Font titleFont =
                 new Font(
@@ -1217,7 +1371,8 @@ namespace ScreenReader
                     FontStyle.Regular);
 
             using SolidBrush whiteBrush =
-                new SolidBrush(Color.White);
+                new SolidBrush(
+                    Color.White);
 
             e.Graphics.DrawString(
                 "Проверка рассчитанных строк",
@@ -1227,21 +1382,32 @@ namespace ScreenReader
                 10);
 
             e.Graphics.DrawString(
-                "Нажмите ESC для выхода",
+                "Красные/зелёные рамки — " +
+                "рассчитанные позиции. ESC — выход.",
                 infoFont,
                 whiteBrush,
                 15,
-                48);
+                50);
 
-            int colorIndex = 0;
+            int platformIndex = 0;
 
-            foreach (Program.PlatformInfo platform in platforms)
+            foreach (
+                PlatformInfo platform
+                in platforms)
             {
-                for (int row = 0; row < 4; row++)
+                // Показываем 20 строк на площадку.
+                // Если корпусов меньше — лишние рамки
+                // просто будут видны ниже последнего корпуса.
+
+                for (
+                    int row = 0;
+                    row < 20;
+                    row++)
                 {
                     int y =
                         platform.FirstRowY +
-                        platform.RowStep * row;
+                        platform.RowStep *
+                        row;
 
                     int height =
                         platform.RowHeight;
@@ -1252,12 +1418,23 @@ namespace ScreenReader
                     int width =
                         platform.RowWidth;
 
+                    Color frameColor;
+
+                    if (platformIndex % 2 == 0)
+                    {
+                        frameColor =
+                            Color.Red;
+                    }
+                    else
+                    {
+                        frameColor =
+                            Color.Lime;
+                    }
+
                     using Pen pen =
                         new Pen(
-                            colorIndex % 2 == 0
-                                ? Color.Red
-                                : Color.Lime,
-                            3);
+                            frameColor,
+                            2);
 
                     Rectangle rectangle =
                         new Rectangle(
@@ -1273,11 +1450,11 @@ namespace ScreenReader
                     using Font rowFont =
                         new Font(
                             "Segoe UI",
-                            12,
+                            10,
                             FontStyle.Bold);
 
                     string text =
-                        $"Площадка {platform.Number}, " +
+                        $"Пл. {platform.Number}  " +
                         $"строка {row + 1}";
 
                     e.Graphics.DrawString(
@@ -1288,7 +1465,7 @@ namespace ScreenReader
                         y + 2);
                 }
 
-                colorIndex++;
+                platformIndex++;
             }
         }
 
@@ -1296,7 +1473,8 @@ namespace ScreenReader
             object? sender,
             KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Escape)
+            if (e.KeyCode ==
+                Keys.Escape)
             {
                 Close();
             }
