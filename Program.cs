@@ -9,7 +9,7 @@ using Tesseract;
 
 namespace ScreenReader
 {
-    internal static class Program
+    public static class Program
     {
         private static readonly string AreasFile =
             Path.Combine(AppContext.BaseDirectory, "areas.txt");
