@@ -919,7 +919,7 @@ namespace ScreenReader
         // ИНФОРМАЦИЯ О ПЛОЩАДКЕ
         // =============================================================
 
-        private class PlatformInfo
+        public class PlatformInfo
         {
             public int Number { get; set; }
 
