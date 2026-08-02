@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 
 namespace ScreenReader
@@ -13,45 +14,59 @@ namespace ScreenReader
 
             Form form = new Form();
 
-            form.Text = "ScreenReader — тест считывания";
+            form.Text = "ScreenReader — захват экрана";
             form.StartPosition = FormStartPosition.CenterScreen;
-            form.Width = 900;
-            form.Height = 600;
+            form.Width = 1200;
+            form.Height = 800;
 
             Label title = new Label();
 
-            title.Text = "Прототип считывания данных с экрана";
+            title.Text = "Тест захвата экрана";
             title.Font = new Font("Segoe UI", 16, FontStyle.Bold);
             title.AutoSize = true;
-            title.Location = new Point(25, 25);
+            title.Location = new Point(20, 20);
 
             Button captureButton = new Button();
 
-            captureButton.Text = "Считать область экрана";
+            captureButton.Text = "Сделать снимок экрана";
             captureButton.Font = new Font("Segoe UI", 11);
-            captureButton.Width = 220;
+            captureButton.Width = 240;
             captureButton.Height = 45;
-            captureButton.Location = new Point(25, 80);
+            captureButton.Location = new Point(20, 65);
 
-            TextBox result = new TextBox();
+            PictureBox picture = new PictureBox();
 
-            result.Multiline = true;
-            result.ReadOnly = true;
-            result.ScrollBars = ScrollBars.Vertical;
-            result.Font = new Font("Consolas", 12);
-            result.Location = new Point(25, 150);
-            result.Width = 830;
-            result.Height = 350;
+            picture.Location = new Point(20, 125);
+            picture.Width = 1140;
+            picture.Height = 600;
+            picture.BorderStyle = BorderStyle.FixedSingle;
+            picture.SizeMode = PictureBoxSizeMode.Zoom;
 
             form.Controls.Add(title);
             form.Controls.Add(captureButton);
-            form.Controls.Add(result);
+            form.Controls.Add(picture);
 
             captureButton.Click += (sender, e) =>
             {
-                result.Text =
-                    "Кнопка работает.\r\n\r\n" +
-                    "Следующим этапом добавим захват области экрана.";
+                Rectangle bounds = Screen.PrimaryScreen.Bounds;
+
+                Bitmap screenshot = new Bitmap(
+                    bounds.Width,
+                    bounds.Height,
+                    PixelFormat.Format32bppArgb);
+
+                using (Graphics graphics = Graphics.FromImage(screenshot))
+                {
+                    graphics.CopyFromScreen(
+                        bounds.Left,
+                        bounds.Top,
+                        0,
+                        0,
+                        bounds.Size);
+                }
+
+                picture.Image?.Dispose();
+                picture.Image = screenshot;
             };
 
             Application.Run(form);
