@@ -1,7 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows.Forms;
 using Tesseract;
@@ -17,7 +18,7 @@ namespace ScreenReader
 
             Form form = new Form
             {
-                Text = "ScreenReader — OCR тест",
+                Text = "ScreenReader — настройка областей",
                 StartPosition = FormStartPosition.CenterScreen,
                 Width = 1200,
                 Height = 800
@@ -25,38 +26,38 @@ namespace ScreenReader
 
             Label title = new Label
             {
-                Text = "OCR — выбор строки",
+                Text = "Настройка областей строки",
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
                 AutoSize = true,
                 Location = new Point(20, 20)
             };
 
-            Button selectButton = new Button
+            Label instruction = new Label
             {
-                Text = "Выбрать область экрана",
-                Font = new Font("Segoe UI", 11),
-                Width = 250,
-                Height = 45,
-                Location = new Point(20, 65)
+                Text =
+                    "Сначала нажми «Настроить области» и последовательно выдели 5 областей строки К-05.",
+                Font = new Font("Segoe UI", 10),
+                AutoSize = true,
+                Location = new Point(20, 50)
             };
 
-            Button ocrButton = new Button
+            Button setupButton = new Button
             {
-                Text = "Распознать выбранную область",
+                Text = "Настроить области",
                 Font = new Font("Segoe UI", 11),
-                Width = 280,
+                Width = 220,
                 Height = 45,
-                Location = new Point(285, 65),
+                Location = new Point(20, 80)
+            };
+
+            Button testButton = new Button
+            {
+                Text = "Проверить OCR",
+                Font = new Font("Segoe UI", 11),
+                Width = 220,
+                Height = 45,
+                Location = new Point(255, 80),
                 Enabled = false
-            };
-
-            PictureBox preview = new PictureBox
-            {
-                Location = new Point(20, 125),
-                Width = 1140,
-                Height = 300,
-                BorderStyle = BorderStyle.FixedSingle,
-                SizeMode = PictureBoxSizeMode.Zoom
             };
 
             TextBox result = new TextBox
@@ -65,26 +66,39 @@ namespace ScreenReader
                 ReadOnly = true,
                 ScrollBars = ScrollBars.Vertical,
                 Font = new Font("Consolas", 11),
-                Location = new Point(20, 445),
+                Location = new Point(20, 145),
                 Width = 1140,
-                Height = 270
+                Height = 560
             };
 
             form.Controls.Add(title);
-            form.Controls.Add(selectButton);
-            form.Controls.Add(ocrButton);
-            form.Controls.Add(preview);
+            form.Controls.Add(instruction);
+            form.Controls.Add(setupButton);
+            form.Controls.Add(testButton);
             form.Controls.Add(result);
 
-            Bitmap? selectedImage = null;
+            Dictionary<string, Rectangle> areas =
+                new Dictionary<string, Rectangle>();
 
-            selectButton.Click += (sender, e) =>
+            string[] areaNames =
+            {
+                "Название корпуса",
+                "Корм за час",
+                "Вода за час",
+                "Корм с 00:00",
+                "Вода с 00:00"
+            };
+
+            setupButton.Click += (sender, e) =>
             {
                 try
                 {
+                    areas.Clear();
+
                     form.Hide();
 
                     Application.DoEvents();
+
                     System.Threading.Thread.Sleep(300);
 
                     Rectangle screenBounds =
@@ -107,44 +121,70 @@ namespace ScreenReader
                             screenBounds.Size);
                     }
 
-                    using SelectionForm selectionForm =
-                        new SelectionForm(screenshot);
-
-                    if (selectionForm.ShowDialog() == DialogResult.OK)
+                    for (int i = 0; i < areaNames.Length; i++)
                     {
-                        Rectangle selectedRectangle =
-                            selectionForm.SelectedRectangle;
+                        using SelectionForm selectionForm =
+                            new SelectionForm(
+                                screenshot,
+                                areaNames[i]);
 
-                        if (selectedRectangle.Width > 5 &&
-                            selectedRectangle.Height > 5)
+                        DialogResult selectionResult =
+                            selectionForm.ShowDialog();
+
+                        if (selectionResult != DialogResult.OK)
                         {
-                            selectedImage?.Dispose();
-
-                            selectedImage =
-                                screenshot.Clone(
-                                    selectedRectangle,
-                                    PixelFormat.Format32bppArgb);
-
-                            preview.Image = selectedImage;
-
-                            ocrButton.Enabled = true;
+                            form.Show();
+                            form.Activate();
 
                             result.Text =
-                                "Область выбрана.\r\n\r\n" +
-                                $"X: {selectedRectangle.X}\r\n" +
-                                $"Y: {selectedRectangle.Y}\r\n" +
-                                $"Ширина: {selectedRectangle.Width}\r\n" +
-                                $"Высота: {selectedRectangle.Height}\r\n\r\n" +
-                                "Нажми «Распознать выбранную область».";
+                                "Настройка отменена.\r\n\r\n" +
+                                "Ни одна область не была сохранена.";
+
+                            return;
                         }
+
+                        Rectangle rectangle =
+                            selectionForm.SelectedRectangle;
+
+                        if (rectangle.Width <= 5 ||
+                            rectangle.Height <= 5)
+                        {
+                            form.Show();
+                            form.Activate();
+
+                            result.Text =
+                                "Выбрана слишком маленькая область.";
+
+                            return;
+                        }
+
+                        areas[areaNames[i]] = rectangle;
                     }
 
                     form.Show();
                     form.Activate();
+
+                    testButton.Enabled = true;
+
+                    result.Text =
+                        "НАСТРОЙКА ЗАВЕРШЕНА\r\n\r\n";
+
+                    foreach (string name in areaNames)
+                    {
+                        Rectangle r = areas[name];
+
+                        result.AppendText(
+                            name + "\r\n" +
+                            $"X = {r.X}\r\n" +
+                            $"Y = {r.Y}\r\n" +
+                            $"Ширина = {r.Width}\r\n" +
+                            $"Высота = {r.Height}\r\n\r\n");
+                    }
                 }
                 catch (Exception ex)
                 {
                     form.Show();
+                    form.Activate();
 
                     result.Text =
                         "ОШИБКА:\r\n\r\n" +
@@ -152,70 +192,79 @@ namespace ScreenReader
                 }
             };
 
-            ocrButton.Click += (sender, e) =>
+            testButton.Click += (sender, e) =>
             {
-                if (selectedImage == null)
+                if (areas.Count != areaNames.Length)
                 {
+                    result.Text =
+                        "Сначала нужно выполнить настройку областей.";
+
                     return;
                 }
 
                 try
                 {
-                    result.Text = "Обрабатываю изображение...";
+                    form.Hide();
 
-                    using Bitmap processedImage =
-                        PrepareImage(selectedImage);
+                    Application.DoEvents();
 
-                    string tessdataPath =
-                        Path.Combine(
-                            AppContext.BaseDirectory,
-                            "tessdata");
+                    System.Threading.Thread.Sleep(300);
 
-                    using TesseractEngine engine =
-                        new TesseractEngine(
-                            tessdataPath,
-                            "rus",
-                            EngineMode.Default);
+                    Rectangle screenBounds =
+                        Screen.PrimaryScreen.Bounds;
 
-                    engine.SetVariable(
-                        "preserve_interword_spaces",
-                        "1");
+                    using Bitmap screenshot =
+                        new Bitmap(
+                            screenBounds.Width,
+                            screenBounds.Height,
+                            PixelFormat.Format32bppArgb);
 
-                    using MemoryStream stream =
-                        new MemoryStream();
-
-                    processedImage.Save(
-                        stream,
-                        System.Drawing.Imaging.ImageFormat.Png);
-
-                    byte[] imageBytes =
-                        stream.ToArray();
-
-                    using Pix image =
-                        Pix.LoadFromMemory(imageBytes);
-
-                    using Page page =
-                        engine.Process(
-                            image,
-                            PageSegMode.SingleLine);
-
-                    string text =
-                        page.GetText();
-
-                    if (string.IsNullOrWhiteSpace(text))
+                    using (Graphics graphics =
+                        Graphics.FromImage(screenshot))
                     {
-                        result.Text =
-                            "OCR ничего не распознал.";
+                        graphics.CopyFromScreen(
+                            screenBounds.Left,
+                            screenBounds.Top,
+                            0,
+                            0,
+                            screenBounds.Size);
                     }
-                    else
+
+                    form.Show();
+                    form.Activate();
+
+                    result.Text =
+                        "ПРОВЕРКА OCR\r\n\r\n";
+
+                    foreach (string name in areaNames)
                     {
-                        result.Text =
-                            "РЕЗУЛЬТАТ OCR:\r\n\r\n" +
-                            text.Trim();
+                        Rectangle area =
+                            areas[name];
+
+                        using Bitmap crop =
+                            screenshot.Clone(
+                                area,
+                                PixelFormat.Format32bppArgb);
+
+                        using Bitmap processed =
+                            PrepareImage(crop);
+
+                        string text =
+                            RunOcr(processed);
+
+                        result.AppendText(
+                            "============================\r\n" +
+                            name + "\r\n" +
+                            "============================\r\n" +
+                            text.Trim() +
+                            "\r\n\r\n");
                     }
                 }
                 catch (Exception ex)
                 {
+                    form.Show();
+                    form.Activate();
+
                     result.Text =
                         "ОШИБКА OCR:\r\n\r\n" +
                         ex.Message +
@@ -224,12 +273,45 @@ namespace ScreenReader
                 }
             };
 
-            form.FormClosed += (sender, e) =>
-            {
-                selectedImage?.Dispose();
-            };
-
             Application.Run(form);
+        }
+
+        private static string RunOcr(Bitmap image)
+        {
+            string tessdataPath =
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    "tessdata");
+
+            using TesseractEngine engine =
+                new TesseractEngine(
+                    tessdataPath,
+                    "rus",
+                    EngineMode.Default);
+
+            engine.SetVariable(
+                "preserve_interword_spaces",
+                "1");
+
+            using MemoryStream stream =
+                new MemoryStream();
+
+            image.Save(
+                stream,
+                System.Drawing.Imaging.ImageFormat.Png);
+
+            byte[] bytes =
+                stream.ToArray();
+
+            using Pix pix =
+                Pix.LoadFromMemory(bytes);
+
+            using Page page =
+                engine.Process(
+                    pix,
+                    PageSegMode.SingleLine);
+
+            return page.GetText();
         }
 
         private static Bitmap PrepareImage(Bitmap source)
@@ -282,16 +364,13 @@ namespace ScreenReader
                             pixel.G * 0.587 +
                             pixel.B * 0.114);
 
-                    Color grayColor =
-                        Color.FromArgb(
-                            value,
-                            value,
-                            value);
-
                     gray.SetPixel(
                         x,
                         y,
-                        grayColor);
+                        Color.FromArgb(
+                            value,
+                            value,
+                            value));
                 }
             }
 
@@ -307,11 +386,8 @@ namespace ScreenReader
             {
                 for (int x = 0; x < gray.Width; x++)
                 {
-                    Color pixel =
-                        gray.GetPixel(x, y);
-
                     int value =
-                        pixel.R;
+                        gray.GetPixel(x, y).R;
 
                     if (value < 90)
                     {
@@ -322,16 +398,13 @@ namespace ScreenReader
                         value = 255;
                     }
 
-                    Color newColor =
-                        Color.FromArgb(
-                            value,
-                            value,
-                            value);
-
                     contrast.SetPixel(
                         x,
                         y,
-                        newColor);
+                        Color.FromArgb(
+                            value,
+                            value,
+                            value));
                 }
             }
 
@@ -344,6 +417,7 @@ namespace ScreenReader
     public class SelectionForm : Form
     {
         private readonly Bitmap screenshot;
+        private readonly string areaName;
 
         private Point startPoint;
         private Point currentPoint;
@@ -352,13 +426,22 @@ namespace ScreenReader
 
         public Rectangle SelectedRectangle { get; private set; }
 
-        public SelectionForm(Bitmap screenshot)
+        public SelectionForm(
+            Bitmap screenshot,
+            string areaName)
         {
             this.screenshot = screenshot;
+            this.areaName = areaName;
 
-            FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.Manual;
-            Bounds = Screen.PrimaryScreen.Bounds;
+            FormBorderStyle =
+                FormBorderStyle.None;
+
+            StartPosition =
+                FormStartPosition.Manual;
+
+            Bounds =
+                Screen.PrimaryScreen.Bounds;
+
             TopMost = true;
             Cursor = Cursors.Cross;
             DoubleBuffered = true;
@@ -371,13 +454,40 @@ namespace ScreenReader
             KeyDown += SelectionForm_KeyDown;
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void OnPaint(
+            PaintEventArgs e)
         {
             base.OnPaint(e);
 
             e.Graphics.DrawImage(
                 screenshot,
                 ClientRectangle);
+
+            using SolidBrush overlay =
+                new SolidBrush(
+                    Color.FromArgb(
+                        100,
+                        Color.Black));
+
+            e.Graphics.FillRectangle(
+                overlay,
+                ClientRectangle);
+
+            using SolidBrush textBrush =
+                new SolidBrush(Color.White);
+
+            using Font font =
+                new Font(
+                    "Segoe UI",
+                    18,
+                    FontStyle.Bold);
+
+            e.Graphics.DrawString(
+                "Выберите: " + areaName,
+                font,
+                textBrush,
+                20,
+                20);
 
             if (selecting)
             {
@@ -386,21 +496,23 @@ namespace ScreenReader
                         startPoint,
                         currentPoint);
 
+                using SolidBrush selectedBrush =
+                    new SolidBrush(
+                        Color.FromArgb(
+                            80,
+                            Color.White));
+
                 using Pen pen =
-                    new Pen(Color.Red, 3);
+                    new Pen(
+                        Color.Red,
+                        3);
+
+                e.Graphics.FillRectangle(
+                    selectedBrush,
+                    rectangle);
 
                 e.Graphics.DrawRectangle(
                     pen,
-                    rectangle);
-
-                using SolidBrush brush =
-                    new SolidBrush(
-                        Color.FromArgb(
-                            60,
-                            Color.Red));
-
-                e.Graphics.FillRectangle(
-                    brush,
                     rectangle);
             }
         }
@@ -483,8 +595,11 @@ namespace ScreenReader
             Point p1,
             Point p2)
         {
-            int x = Math.Min(p1.X, p2.X);
-            int y = Math.Min(p1.Y, p2.Y);
+            int x =
+                Math.Min(p1.X, p2.X);
+
+            int y =
+                Math.Min(p1.Y, p2.Y);
 
             int width =
                 Math.Abs(p1.X - p2.X);
