@@ -11,6 +11,18 @@ namespace ScreenReader
 {
     internal static class Program
     {
+        private static readonly string AreasFile =
+            Path.Combine(AppContext.BaseDirectory, "areas.txt");
+
+        private static readonly string[] AreaNames =
+        {
+            "Название корпуса",
+            "Корм за час",
+            "Вода за час",
+            "Корм с 00:00",
+            "Вода с 00:00"
+        };
+
         [STAThread]
         static void Main()
         {
@@ -18,15 +30,15 @@ namespace ScreenReader
 
             Form form = new Form
             {
-                Text = "ScreenReader — диагностика OCR",
+                Text = "ScreenReader — чтение данных",
                 StartPosition = FormStartPosition.CenterScreen,
-                Width = 1250,
-                Height = 850
+                Width = 1200,
+                Height = 800
             };
 
             Label title = new Label
             {
-                Text = "Диагностика OCR",
+                Text = "Чтение данных корпуса",
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
                 AutoSize = true,
                 Location = new Point(20, 20)
@@ -34,7 +46,8 @@ namespace ScreenReader
 
             Label instruction = new Label
             {
-                Text = "Настрой пять областей одной строки, затем сравним несколько способов OCR.",
+                Text =
+                    "Сначала настрой области. После этого программа сможет читать строку автоматически.",
                 Font = new Font("Segoe UI", 10),
                 AutoSize = true,
                 Location = new Point(20, 50)
@@ -49,122 +62,70 @@ namespace ScreenReader
                 Location = new Point(20, 80)
             };
 
-            Button testButton = new Button
+            Button readButton = new Button
             {
-                Text = "Запустить диагностику",
+                Text = "Считать данные",
                 Font = new Font("Segoe UI", 11),
-                Width = 240,
+                Width = 220,
                 Height = 45,
-                Location = new Point(255, 80),
-                Enabled = false
+                Location = new Point(255, 80)
             };
 
             TextBox result = new TextBox
             {
                 Multiline = true,
                 ReadOnly = true,
-                ScrollBars = ScrollBars.Both,
-                WordWrap = false,
-                Font = new Font("Consolas", 10),
+                ScrollBars = ScrollBars.Vertical,
+                Font = new Font("Consolas", 12),
                 Location = new Point(20, 145),
-                Width = 1190,
-                Height = 640
+                Width = 1140,
+                Height = 560
             };
 
             form.Controls.Add(title);
             form.Controls.Add(instruction);
             form.Controls.Add(setupButton);
-            form.Controls.Add(testButton);
+            form.Controls.Add(readButton);
             form.Controls.Add(result);
 
             Dictionary<string, Rectangle> areas =
-                new Dictionary<string, Rectangle>();
+                LoadAreas();
 
-            string[] areaNames =
+            if (areas.Count == AreaNames.Length)
             {
-                "Название корпуса",
-                "Корм за час",
-                "Вода за час",
-                "Корм с 00:00",
-                "Вода с 00:00"
-            };
+                result.Text =
+                    "Области загружены из areas.txt.\r\n\r\n" +
+                    "Можно нажать «Считать данные».";
+            }
+            else
+            {
+                result.Text =
+                    "Области ещё не настроены.\r\n\r\n" +
+                    "Нажми «Настроить области».";
+            }
 
             setupButton.Click += (sender, e) =>
             {
                 try
                 {
-                    areas.Clear();
+                    Dictionary<string, Rectangle> newAreas =
+                        SelectAreas(form);
 
-                    form.Hide();
-
-                    Application.DoEvents();
-                    System.Threading.Thread.Sleep(300);
-
-                    Rectangle screenBounds =
-                        Screen.PrimaryScreen.Bounds;
-
-                    using Bitmap screenshot =
-                        new Bitmap(
-                            screenBounds.Width,
-                            screenBounds.Height,
-                            PixelFormat.Format32bppArgb);
-
-                    using (Graphics graphics =
-                        Graphics.FromImage(screenshot))
+                    if (newAreas.Count != AreaNames.Length)
                     {
-                        graphics.CopyFromScreen(
-                            screenBounds.Left,
-                            screenBounds.Top,
-                            0,
-                            0,
-                            screenBounds.Size);
+                        return;
                     }
 
-                    for (int i = 0; i < areaNames.Length; i++)
-                    {
-                        using SelectionForm selectionForm =
-                            new SelectionForm(
-                                screenshot,
-                                areaNames[i]);
+                    areas = newAreas;
 
-                        if (selectionForm.ShowDialog() !=
-                            DialogResult.OK)
-                        {
-                            form.Show();
-                            form.Activate();
-
-                            result.Text =
-                                "Настройка отменена.";
-
-                            return;
-                        }
-
-                        Rectangle rectangle =
-                            selectionForm.SelectedRectangle;
-
-                        if (rectangle.Width <= 5 ||
-                            rectangle.Height <= 5)
-                        {
-                            form.Show();
-                            form.Activate();
-
-                            result.Text =
-                                "Выбрана слишком маленькая область.";
-
-                            return;
-                        }
-
-                        areas[areaNames[i]] = rectangle;
-                    }
-
-                    form.Show();
-                    form.Activate();
-
-                    testButton.Enabled = true;
+                    SaveAreas(areas);
 
                     result.Text =
-                        "Настройка завершена.\r\n\r\n" +
-                        "Теперь нажми «Запустить диагностику».";
+                        "ОБЛАСТИ СОХРАНЕНЫ\r\n\r\n" +
+                        "Файл:\r\n" +
+                        AreasFile +
+                        "\r\n\r\n" +
+                        "Теперь можно нажать «Считать данные».";
                 }
                 catch (Exception ex)
                 {
@@ -172,146 +133,80 @@ namespace ScreenReader
                     form.Activate();
 
                     result.Text =
-                        "ОШИБКА:\r\n\r\n" +
+                        "ОШИБКА НАСТРОЙКИ:\r\n\r\n" +
                         ex.Message;
                 }
             };
 
-            testButton.Click += (sender, e) =>
+            readButton.Click += (sender, e) =>
             {
-                if (areas.Count != areaNames.Length)
+                if (areas.Count != AreaNames.Length)
                 {
                     result.Text =
-                        "Сначала выполни настройку областей.";
+                        "Сначала нужно настроить области.";
 
                     return;
                 }
 
                 try
                 {
-                    form.Hide();
+                    result.Text =
+                        "Считываю данные...\r\n";
 
                     Application.DoEvents();
-                    System.Threading.Thread.Sleep(300);
-
-                    Rectangle screenBounds =
-                        Screen.PrimaryScreen.Bounds;
 
                     using Bitmap screenshot =
-                        new Bitmap(
-                            screenBounds.Width,
-                            screenBounds.Height,
-                            PixelFormat.Format32bppArgb);
+                        CaptureScreen();
 
-                    using (Graphics graphics =
-                        Graphics.FromImage(screenshot))
+                    string[] values =
+                        new string[AreaNames.Length];
+
+                    for (int i = 0; i < AreaNames.Length; i++)
                     {
-                        graphics.CopyFromScreen(
-                            screenBounds.Left,
-                            screenBounds.Top,
-                            0,
-                            0,
-                            screenBounds.Size);
-                    }
+                        string name =
+                            AreaNames[i];
 
-                    form.Show();
-                    form.Activate();
-
-                    result.Text =
-                        "ДИАГНОСТИКА OCR\r\n" +
-                        "==============================\r\n\r\n";
-
-                    foreach (string name in areaNames)
-                    {
-                        Rectangle area = areas[name];
+                        Rectangle area =
+                            areas[name];
 
                         using Bitmap crop =
                             screenshot.Clone(
                                 area,
                                 PixelFormat.Format32bppArgb);
 
-                        result.AppendText(
-                            "\r\n========================================\r\n" +
-                            name +
-                            "\r\n========================================\r\n\r\n");
-
-                        // Вариант 1 — оригинал
-                        string original =
-                            RunOcr(
-                                crop,
-                                PageSegMode.SingleLine);
-
-                        result.AppendText(
-                            "[1] ОРИГИНАЛ\r\n" +
-                            original.Trim() +
-                            "\r\n\r\n");
-
-                        // Вариант 2 — увеличенный
-                        using Bitmap enlarged =
-                            ResizeImage(crop, 3);
-
-                        string enlargedText =
-                            RunOcr(
-                                enlarged,
-                                PageSegMode.SingleLine);
-
-                        result.AppendText(
-                            "[2] УВЕЛИЧЕНИЕ x3\r\n" +
-                            enlargedText.Trim() +
-                            "\r\n\r\n");
-
-                        // Вариант 3 — серый
-                        using Bitmap gray =
-                            MakeGray(enlarged);
-
-                        string grayText =
-                            RunOcr(
-                                gray,
-                                PageSegMode.SingleLine);
-
-                        result.AppendText(
-                            "[3] СЕРЫЙ\r\n" +
-                            grayText.Trim() +
-                            "\r\n\r\n");
-
-                        // Вариант 4 — бинарный
-                        using Bitmap binary =
-                            MakeBinary(gray);
-
-                        string binaryText =
-                            RunOcr(
-                                binary,
-                                PageSegMode.SingleLine);
-
-                        result.AppendText(
-                            "[4] ЧЁРНО-БЕЛЫЙ\r\n" +
-                            binaryText.Trim() +
-                            "\r\n\r\n");
-
-                        // Вариант 5 — режим текста
-                        string sparseText =
-                            RunOcr(
-                                enlarged,
-                                PageSegMode.SparseText);
-
-                        result.AppendText(
-                            "[5] SPARSE TEXT\r\n" +
-                            sparseText.Trim() +
-                            "\r\n\r\n");
+                        values[i] =
+                            RunSparseOcr(crop).Trim();
                     }
 
-                    result.AppendText(
-                        "\r\n========================================\r\n" +
-                        "ДИАГНОСТИКА ЗАВЕРШЕНА\r\n" +
-                        "========================================\r\n");
+                    string text =
+                        "РЕЗУЛЬТАТ СЧИТЫВАНИЯ\r\n" +
+                        "==============================\r\n\r\n" +
+
+                        "Корпус:\r\n" +
+                        values[0] +
+                        "\r\n\r\n" +
+
+                        "Корм за час:\r\n" +
+                        values[1] +
+                        "\r\n\r\n" +
+
+                        "Вода за час:\r\n" +
+                        values[2] +
+                        "\r\n\r\n" +
+
+                        "Корм с 00:00:\r\n" +
+                        values[3] +
+                        "\r\n\r\n" +
+
+                        "Вода с 00:00:\r\n" +
+                        values[4];
+
+                    result.Text = text;
                 }
                 catch (Exception ex)
                 {
-                    form.Show();
-                    form.Activate();
-
                     result.Text =
-                        "ОШИБКА:\r\n\r\n" +
+                        "ОШИБКА OCR:\r\n\r\n" +
                         ex.Message +
                         "\r\n\r\n" +
                         ex.StackTrace;
@@ -321,10 +216,91 @@ namespace ScreenReader
             Application.Run(form);
         }
 
-        private static string RunOcr(
-            Bitmap image,
-            PageSegMode mode)
+        private static Dictionary<string, Rectangle> SelectAreas(
+            Form form)
         {
+            Dictionary<string, Rectangle> result =
+                new Dictionary<string, Rectangle>();
+
+            form.Hide();
+
+            Application.DoEvents();
+
+            System.Threading.Thread.Sleep(300);
+
+            using Bitmap screenshot =
+                CaptureScreen();
+
+            for (int i = 0; i < AreaNames.Length; i++)
+            {
+                using SelectionForm selectionForm =
+                    new SelectionForm(
+                        screenshot,
+                        AreaNames[i]);
+
+                DialogResult dialogResult =
+                    selectionForm.ShowDialog();
+
+                if (dialogResult != DialogResult.OK)
+                {
+                    form.Show();
+                    form.Activate();
+
+                    return result;
+                }
+
+                Rectangle rectangle =
+                    selectionForm.SelectedRectangle;
+
+                if (rectangle.Width <= 5 ||
+                    rectangle.Height <= 5)
+                {
+                    form.Show();
+                    form.Activate();
+
+                    return result;
+                }
+
+                result[AreaNames[i]] =
+                    rectangle;
+            }
+
+            form.Show();
+            form.Activate();
+
+            return result;
+        }
+
+        private static Bitmap CaptureScreen()
+        {
+            Rectangle screenBounds =
+                Screen.PrimaryScreen.Bounds;
+
+            Bitmap screenshot =
+                new Bitmap(
+                    screenBounds.Width,
+                    screenBounds.Height,
+                    PixelFormat.Format32bppArgb);
+
+            using Graphics graphics =
+                Graphics.FromImage(screenshot);
+
+            graphics.CopyFromScreen(
+                screenBounds.Left,
+                screenBounds.Top,
+                0,
+                0,
+                screenBounds.Size);
+
+            return screenshot;
+        }
+
+        private static string RunSparseOcr(
+            Bitmap source)
+        {
+            using Bitmap enlarged =
+                ResizeImage(source, 3);
+
             string tessdataPath =
                 Path.Combine(
                     AppContext.BaseDirectory,
@@ -343,7 +319,7 @@ namespace ScreenReader
             using MemoryStream stream =
                 new MemoryStream();
 
-            image.Save(
+            enlarged.Save(
                 stream,
                 System.Drawing.Imaging.ImageFormat.Png);
 
@@ -356,7 +332,7 @@ namespace ScreenReader
             using Page page =
                 engine.Process(
                     pix,
-                    mode);
+                    PageSegMode.SparseText);
 
             return page.GetText();
         }
@@ -394,73 +370,86 @@ namespace ScreenReader
             return result;
         }
 
-        private static Bitmap MakeGray(
-            Bitmap source)
+        private static void SaveAreas(
+            Dictionary<string, Rectangle> areas)
         {
-            Bitmap result =
-                new Bitmap(
-                    source.Width,
-                    source.Height,
-                    PixelFormat.Format24bppRgb);
+            using StreamWriter writer =
+                new StreamWriter(
+                    AreasFile,
+                    false);
 
-            for (int y = 0; y < source.Height; y++)
+            foreach (string name in AreaNames)
             {
-                for (int x = 0; x < source.Width; x++)
-                {
-                    Color pixel =
-                        source.GetPixel(x, y);
+                Rectangle r =
+                    areas[name];
 
-                    int value =
-                        (int)(
-                            pixel.R * 0.299 +
-                            pixel.G * 0.587 +
-                            pixel.B * 0.114);
-
-                    result.SetPixel(
-                        x,
-                        y,
-                        Color.FromArgb(
-                            value,
-                            value,
-                            value));
-                }
+                writer.WriteLine(
+                    $"{name}|{r.X}|{r.Y}|{r.Width}|{r.Height}");
             }
-
-            return result;
         }
 
-        private static Bitmap MakeBinary(
-            Bitmap source)
+        private static Dictionary<string, Rectangle> LoadAreas()
         {
-            Bitmap result =
-                new Bitmap(
-                    source.Width,
-                    source.Height,
-                    PixelFormat.Format24bppRgb);
+            Dictionary<string, Rectangle> areas =
+                new Dictionary<string, Rectangle>();
 
-            for (int y = 0; y < source.Height; y++)
+            if (!File.Exists(AreasFile))
             {
-                for (int x = 0; x < source.Width; x++)
-                {
-                    int value =
-                        source.GetPixel(x, y).R;
-
-                    value =
-                        value < 90
-                            ? 0
-                            : 255;
-
-                    result.SetPixel(
-                        x,
-                        y,
-                        Color.FromArgb(
-                            value,
-                            value,
-                            value));
-                }
+                return areas;
             }
 
-            return result;
+            try
+            {
+                string[] lines =
+                    File.ReadAllLines(AreasFile);
+
+                foreach (string line in lines)
+                {
+                    string[] parts =
+                        line.Split('|');
+
+                    if (parts.Length != 5)
+                    {
+                        continue;
+                    }
+
+                    string name =
+                        parts[0];
+
+                    if (!int.TryParse(parts[1], out int x))
+                    {
+                        continue;
+                    }
+
+                    if (!int.TryParse(parts[2], out int y))
+                    {
+                        continue;
+                    }
+
+                    if (!int.TryParse(parts[3], out int width))
+                    {
+                        continue;
+                    }
+
+                    if (!int.TryParse(parts[4], out int height))
+                    {
+                        continue;
+                    }
+
+                    areas[name] =
+                        new Rectangle(
+                            x,
+                            y,
+                            width,
+                            height);
+                }
+            }
+            catch
+            {
+                areas.Clear();
+            }
+
+            return areas;
         }
     }
 
@@ -523,8 +512,7 @@ namespace ScreenReader
                 ClientRectangle);
 
             using SolidBrush textBrush =
-                new SolidBrush(
-                    Color.White);
+                new SolidBrush(Color.White);
 
             using Font font =
                 new Font(
