@@ -31,7 +31,7 @@ namespace ScreenReader
 
             Form form = new Form
             {
-                Text = "ScreenReader — автоматическое обнаружение корпусов",
+                Text = "ScreenReader — чтение данных",
                 StartPosition = FormStartPosition.CenterScreen,
                 Width = 1200,
                 Height = 800
@@ -39,23 +39,16 @@ namespace ScreenReader
 
             Label title = new Label
             {
-                Text = "ScreenReader",
-                Font = new Font(
-                    "Segoe UI",
-                    16,
-                    FontStyle.Bold),
+                Text = "Чтение данных корпуса",
+                Font = new Font("Segoe UI", 16, FontStyle.Bold),
                 AutoSize = true,
                 Location = new Point(20, 20)
             };
 
             Label instruction = new Label
             {
-                Text =
-                    "Сначала настрой пять OCR-областей. " +
-                    "После этого программа сама ищет строки корпусов.",
-                Font = new Font(
-                    "Segoe UI",
-                    10),
+                Text = "Настрой пять областей один раз. Строки и площадки программа ищет сама.",
+                Font = new Font("Segoe UI", 10),
                 AutoSize = true,
                 Location = new Point(20, 50)
             };
@@ -63,45 +56,37 @@ namespace ScreenReader
             Button setupButton = new Button
             {
                 Text = "Настроить области",
-                Font = new Font(
-                    "Segoe UI",
-                    11),
-                Width = 230,
+                Font = new Font("Segoe UI", 11),
+                Width = 220,
                 Height = 45,
-                Location = new Point(20, 85)
+                Location = new Point(20, 80)
             };
 
             Button detectButton = new Button
             {
                 Text = "Найти корпуса автоматически",
-                Font = new Font(
-                    "Segoe UI",
-                    11),
+                Font = new Font("Segoe UI", 11),
                 Width = 260,
                 Height = 45,
-                Location = new Point(265, 85)
+                Location = new Point(255, 80)
+            };
+
+            Button showRowsButton = new Button
+            {
+                Text = "Показать найденные строки",
+                Font = new Font("Segoe UI", 11),
+                Width = 250,
+                Height = 45,
+                Location = new Point(530, 80)
             };
 
             Button readButton = new Button
             {
-                Text = "Считать данные",
-                Font = new Font(
-                    "Segoe UI",
-                    11),
-                Width = 220,
+                Text = "Считать найденные корпуса",
+                Font = new Font("Segoe UI", 11),
+                Width = 250,
                 Height = 45,
-                Location = new Point(540, 85)
-            };
-
-            Button screenshotButton = new Button
-            {
-                Text = "Сделать скриншот",
-                Font = new Font(
-                    "Segoe UI",
-                    11),
-                Width = 220,
-                Height = 45,
-                Location = new Point(775, 85)
+                Location = new Point(795, 80)
             };
 
             TextBox result = new TextBox
@@ -109,9 +94,7 @@ namespace ScreenReader
                 Multiline = true,
                 ReadOnly = true,
                 ScrollBars = ScrollBars.Vertical,
-                Font = new Font(
-                    "Consolas",
-                    12),
+                Font = new Font("Consolas", 11),
                 Location = new Point(20, 145),
                 Width = 1140,
                 Height = 560
@@ -121,248 +104,180 @@ namespace ScreenReader
             form.Controls.Add(instruction);
             form.Controls.Add(setupButton);
             form.Controls.Add(detectButton);
+            form.Controls.Add(showRowsButton);
             form.Controls.Add(readButton);
-            form.Controls.Add(screenshotButton);
             form.Controls.Add(result);
 
-            Dictionary<string, Rectangle> areas =
-                LoadAreas();
+            Dictionary<string, Rectangle> areas = LoadAreas();
+            List<DetectedRow> detectedRows = new List<DetectedRow>();
 
-            List<DetectedRow> detectedRows =
-                new List<DetectedRow>();
-
-            if (areas.Count == AreaNames.Length)
-            {
-                result.Text =
-                    "Области загружены из areas.txt.\r\n\r\n" +
-                    "Можно нажимать «Найти корпуса автоматически».";
-            }
-            else
-            {
-                result.Text =
-                    "Области ещё не настроены.\r\n\r\n" +
-                    "Нажми «Настроить области».";
-            }
-
-            // =========================================================
-            // НАСТРОЙКА ПЯТИ OCR ОБЛАСТЕЙ
-            // =========================================================
+            result.Text = areas.Count == AreaNames.Length
+                ? "Области загружены из areas.txt.\r\n\r\nНажми «Найти корпуса автоматически»."
+                : "Области ещё не настроены.\r\n\r\nНажми «Настроить области».";
 
             setupButton.Click += (sender, e) =>
             {
                 try
                 {
-                    Dictionary<string, Rectangle> newAreas =
-                        SelectAreas(form);
+                    Dictionary<string, Rectangle> newAreas = SelectAreas(form);
 
                     if (newAreas.Count != AreaNames.Length)
-                    {
                         return;
-                    }
 
                     areas = newAreas;
-
                     SaveAreas(areas);
 
                     result.Text =
                         "ОБЛАСТИ СОХРАНЕНЫ\r\n\r\n" +
-                        "Теперь программа может автоматически " +
-                        "искать корпуса на экране.\r\n\r\n" +
-                        "Нажми «Найти корпуса автоматически».";
+                        "Теперь нажми «Найти корпуса автоматически».";
                 }
                 catch (Exception ex)
                 {
                     form.Show();
                     form.Activate();
-
-                    result.Text =
-                        "ОШИБКА НАСТРОЙКИ ОБЛАСТЕЙ:\r\n\r\n" +
-                        ex.Message;
+                    result.Text = "ОШИБКА НАСТРОЙКИ:\r\n\r\n" + ex.Message;
                 }
             };
-
-            // =========================================================
-            // АВТОМАТИЧЕСКИЙ ПОИСК КОРПУСОВ
-            // =========================================================
 
             detectButton.Click += (sender, e) =>
             {
                 if (areas.Count != AreaNames.Length)
                 {
-                    result.Text =
-                        "Сначала нужно настроить пять областей.";
-
+                    result.Text = "Сначала настрой пять областей.";
                     return;
                 }
 
                 try
                 {
-                    result.Text =
-                        "Анализирую экран...\r\n";
-
-                    Application.DoEvents();
-
                     form.Hide();
-
                     Application.DoEvents();
-
                     System.Threading.Thread.Sleep(300);
 
-                    using Bitmap screenshot =
-                        CaptureScreen();
+                    using Bitmap screenshot = CaptureScreen();
 
-                    detectedRows =
-                        DetectRows(
-                            screenshot,
-                            areas);
+                    detectedRows = DetectRows(screenshot, areas);
 
                     form.Show();
                     form.Activate();
 
-                    if (detectedRows.Count == 0)
+                    result.Text = BuildDetectionReport(detectedRows);
+
+                    if (detectedRows.Count > 0)
                     {
-                        result.Text =
-                            "Корпуса не найдены.\r\n\r\n" +
-                            "Попробуем изменить алгоритм обнаружения " +
-                            "после проверки текущего скриншота.";
-
-                        return;
+                        using RowPreviewForm preview =
+                            new RowPreviewForm(screenshot, detectedRows);
+                        preview.ShowDialog();
+                        form.Show();
+                        form.Activate();
                     }
-
+                }
+                catch (Exception ex)
+                {
+                    form.Show();
+                    form.Activate();
                     result.Text =
-                        BuildDetectionReport(
-                            detectedRows);
+                        "ОШИБКА АВТОМАТИЧЕСКОГО ПОИСКА:\r\n\r\n" +
+                        ex.Message + "\r\n\r\n" + ex.StackTrace;
+                }
+            };
 
-                    using RowDetectionPreviewForm preview =
-                        new RowDetectionPreviewForm(
-                            screenshot,
-                            detectedRows);
+            showRowsButton.Click += (sender, e) =>
+            {
+                if (detectedRows.Count == 0)
+                {
+                    result.Text = "Сначала нажми «Найти корпуса автоматически».";
+                    return;
+                }
+
+                try
+                {
+                    form.Hide();
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(200);
+
+                    using Bitmap screenshot = CaptureScreen();
+                    using RowPreviewForm preview =
+                        new RowPreviewForm(screenshot, detectedRows);
 
                     preview.ShowDialog();
 
                     form.Show();
                     form.Activate();
+                    result.Text =
+                        BuildDetectionReport(detectedRows) +
+                        "\r\n\r\nESC закрывает проверку.";
                 }
                 catch (Exception ex)
                 {
                     form.Show();
                     form.Activate();
-
-                    result.Text =
-                        "ОШИБКА АВТОМАТИЧЕСКОГО ПОИСКА:\r\n\r\n" +
-                        ex.Message +
-                        "\r\n\r\n" +
-                        ex.StackTrace;
+                    result.Text = "ОШИБКА:\r\n\r\n" + ex.Message;
                 }
             };
-
-            // =========================================================
-            // OCR ТЕКУЩЕЙ СТРОКИ
-            //
-            // Пока это тестовый режим:
-            // берём найденную первую строку.
-            // Массовое считывание всех корпусов сделаем после проверки
-            // автоматического обнаружения.
-            // =========================================================
 
             readButton.Click += (sender, e) =>
             {
                 if (areas.Count != AreaNames.Length)
                 {
-                    result.Text =
-                        "Сначала настрой области.";
-
+                    result.Text = "Сначала настрой пять областей.";
                     return;
                 }
 
                 if (detectedRows.Count == 0)
                 {
-                    result.Text =
-                        "Сначала нажми «Найти корпуса автоматически».";
-
+                    result.Text = "Сначала найди корпуса автоматически.";
                     return;
                 }
 
                 try
                 {
                     form.Hide();
-
                     Application.DoEvents();
-
                     System.Threading.Thread.Sleep(300);
 
-                    using Bitmap screenshot =
-                        CaptureScreen();
+                    using Bitmap screenshot = CaptureScreen();
 
-                    DetectedRow row =
-                        detectedRows[0];
+                    List<string> output = new List<string>();
+                    int rowIndex = 0;
 
-                    string[] values =
-                        ReadRow(
+                    foreach (DetectedRow row in detectedRows)
+                    {
+                        rowIndex++;
+
+                        string[] values = ReadRow(
                             screenshot,
                             areas,
-                            row);
+                            row.Y);
+
+                        output.Add(
+                            $"Площадка {row.Platform}, корпус {row.NumberInPlatform}");
+                        output.Add($"Название: {values[0]}");
+                        output.Add($"Корм/час: {values[1]}");
+                        output.Add($"Вода/час: {values[2]}");
+                        output.Add($"Корм с 00:00: {values[3]}");
+                        output.Add($"Вода с 00:00: {values[4]}");
+                        output.Add("");
+
+                        if (rowIndex >= 100)
+                            break;
+                    }
 
                     form.Show();
                     form.Activate();
 
                     result.Text =
-                        BuildOcrResult(values);
+                        "РЕЗУЛЬТАТ СЧИТЫВАНИЯ\r\n" +
+                        "==============================\r\n\r\n" +
+                        string.Join("\r\n", output);
                 }
                 catch (Exception ex)
                 {
                     form.Show();
                     form.Activate();
-
                     result.Text =
                         "ОШИБКА OCR:\r\n\r\n" +
-                        ex.Message +
-                        "\r\n\r\n" +
+                        ex.Message + "\r\n\r\n" +
                         ex.StackTrace;
-                }
-            };
-
-            // =========================================================
-            // СКРИНШОТ
-            // =========================================================
-
-            screenshotButton.Click += (sender, e) =>
-            {
-                try
-                {
-                    form.Hide();
-
-                    Application.DoEvents();
-
-                    System.Threading.Thread.Sleep(300);
-
-                    using Bitmap screenshot =
-                        CaptureScreen();
-
-                    string fileName =
-                        Path.Combine(
-                            AppContext.BaseDirectory,
-                            "ScreenReader_test.png");
-
-                    screenshot.Save(
-                        fileName,
-                        System.Drawing.Imaging.ImageFormat.Png);
-
-                    form.Show();
-                    form.Activate();
-
-                    result.Text =
-                        "Скриншот сохранён:\r\n\r\n" +
-                        fileName;
-                }
-                catch (Exception ex)
-                {
-                    form.Show();
-                    form.Activate();
-
-                    result.Text =
-                        "ОШИБКА СОХРАНЕНИЯ СКРИНШОТА:\r\n\r\n" +
-                        ex.Message;
                 }
             };
 
@@ -370,347 +285,55 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // ВЫБОР ПЯТИ ОБЛАСТЕЙ
-        // =============================================================
-
-        private static Dictionary<string, Rectangle> SelectAreas(
-            Form form)
-        {
-            Dictionary<string, Rectangle> areas =
-                new Dictionary<string, Rectangle>();
-
-            form.Hide();
-
-            Application.DoEvents();
-
-            System.Threading.Thread.Sleep(300);
-
-            using Bitmap screenshot =
-                CaptureScreen();
-
-            for (int i = 0;
-                 i < AreaNames.Length;
-                 i++)
-            {
-                using SelectionForm selectionForm =
-                    new SelectionForm(
-                        screenshot,
-                        AreaNames[i]);
-
-                DialogResult dialogResult =
-                    selectionForm.ShowDialog();
-
-                if (dialogResult != DialogResult.OK)
-                {
-                    form.Show();
-                    form.Activate();
-
-                    return areas;
-                }
-
-                Rectangle rectangle =
-                    selectionForm.SelectedRectangle;
-
-                if (rectangle.Width <= 5 ||
-                    rectangle.Height <= 3)
-                {
-                    form.Show();
-                    form.Activate();
-
-                    return areas;
-                }
-
-                areas[AreaNames[i]] =
-                    rectangle;
-            }
-
-            form.Show();
-            form.Activate();
-
-            return areas;
-        }
-
-        // =============================================================
-        // АВТОМАТИЧЕСКОЕ ОБНАРУЖЕНИЕ СТРОК
+        // АВТОМАТИЧЕСКОЕ ОБНАРУЖЕНИЕ СТРОК И ПЛОЩАДОК
         // =============================================================
 
         private static List<DetectedRow> DetectRows(
             Bitmap screenshot,
             Dictionary<string, Rectangle> areas)
         {
-            List<DetectedRow> result =
-                new List<DetectedRow>();
-
-            int screenWidth =
-                screenshot.Width;
-
-            int screenHeight =
-                screenshot.Height;
-
-            // ---------------------------------------------------------
-            // Берём только X-диапазоны настроенных OCR областей.
-            //
-            // Y старых областей здесь НЕ используется.
-            // Мы сканируем всю высоту экрана.
-            // ---------------------------------------------------------
-
-            List<Rectangle> scanAreas =
-                new List<Rectangle>();
-
-            foreach (string name in AreaNames)
-            {
-                if (!areas.TryGetValue(
-                        name,
-                        out Rectangle area))
-                {
-                    continue;
-                }
-
-                int x =
-                    Math.Max(
-                        0,
-                        area.X);
-
-                int right =
-                    Math.Min(
-                        screenWidth,
-                        area.Right);
-
-                if (right <= x)
-                {
-                    continue;
-                }
-
-                scanAreas.Add(
-                    new Rectangle(
-                        x,
-                        0,
-                        right - x,
-                        screenHeight));
-            }
-
-            if (scanAreas.Count == 0)
-            {
-                return result;
-            }
-
-            // ---------------------------------------------------------
-            // Для каждого Y считаем количество "тёмных" пикселей
-            // внутри настроенных X-областей.
-            // ---------------------------------------------------------
-
-            int[] density =
-                new int[screenHeight];
-
-            int[] totalPixels =
-                new int[screenHeight];
-
-            foreach (Rectangle area in scanAreas)
-            {
-                int startX =
-                    area.X;
-
-                int endX =
-                    area.Right;
-
-                for (int y = 0;
-                     y < screenHeight;
-                     y++)
-                {
-                    int darkCount = 0;
-                    int totalCount = 0;
-
-                    for (int x = startX;
-                         x < endX;
-                         x++)
-                    {
-                        Color pixel =
-                            screenshot.GetPixel(
-                                x,
-                                y);
-
-                        int brightness =
-                            (pixel.R +
-                             pixel.G +
-                             pixel.B) / 3;
-
-                        totalCount++;
-
-                        if (IsTextPixel(
-                                pixel,
-                                brightness))
-                        {
-                            darkCount++;
-                        }
-                    }
-
-                    density[y] +=
-                        darkCount;
-
-                    totalPixels[y] +=
-                        totalCount;
-                }
-            }
-
-            // ---------------------------------------------------------
-            // Преобразуем плотность в процент.
-            // ---------------------------------------------------------
-
-            double[] score =
-                new double[screenHeight];
-
-            for (int y = 0;
-                 y < screenHeight;
-                 y++)
-            {
-                if (totalPixels[y] == 0)
-                {
-                    score[y] = 0;
-                }
-                else
-                {
-                    score[y] =
-                        (double)density[y] /
-                        totalPixels[y];
-                }
-            }
-
-            // ---------------------------------------------------------
-            // Сглаживаем по вертикали.
-            // ---------------------------------------------------------
-
-            double[] smoothed =
-                SmoothVerticalScore(
-                    score);
-
-            // ---------------------------------------------------------
-            // Ищем группы соседних строк с текстом.
-            // ---------------------------------------------------------
-
-            List<TextBand> bands =
-                FindTextBands(
-                    smoothed);
-
-            if (bands.Count == 0)
-            {
-                return result;
-            }
-
-            // ---------------------------------------------------------
-            // Центры обнаруженных текстовых полос.
-            // ---------------------------------------------------------
-
-            List<int> centers =
-                bands
-                    .Select(
-                        b => b.CenterY)
-                    .ToList();
-
-            // ---------------------------------------------------------
-            // Удаляем слишком близкие центры.
-            // ---------------------------------------------------------
-
-            centers =
-                MergeCloseCenters(
-                    centers,
-                    4);
+            List<int> centers = FindTextCenters(screenshot, areas);
 
             if (centers.Count < 2)
-            {
-                foreach (int center in centers)
-                {
-                    result.Add(
-                        new DetectedRow
-                        {
-                            Y = center,
-                            Height = EstimateRowHeight(
-                                bands,
-                                center),
-                            Platform = 1,
-                            NumberInPlatform =
-                                result.Count + 1
-                        });
-                }
+                return centers
+                    .Select((y, i) => new DetectedRow
+                    {
+                        Y = y,
+                        Platform = 1,
+                        NumberInPlatform = i + 1,
+                        IsReconstructed = false
+                    })
+                    .ToList();
 
-                return result;
-            }
+            int step = FindDominantStep(centers);
 
-            // ---------------------------------------------------------
-            // Находим наиболее вероятный шаг.
-            // ---------------------------------------------------------
+            if (step < 5 || step > 100)
+                return new List<DetectedRow>();
 
-            int rowStep =
-                FindDominantStep(
-                    centers);
+            List<List<int>> platforms =
+                SplitPlatforms(centers, step);
 
-            if (rowStep <= 0)
-            {
-                rowStep = 1;
-            }
-
-            // ---------------------------------------------------------
-            // Разделяем найденные строки на площадки.
-            //
-            // Если расстояние значительно больше обычного шага,
-            // считаем это началом следующей площадки.
-            // ---------------------------------------------------------
-
-            List<List<int>> platformCenters =
-                SplitIntoPlatforms(
-                    centers,
-                    rowStep);
-
+            List<DetectedRow> result = new List<DetectedRow>();
             int platformNumber = 1;
 
-            foreach (
-                List<int> platform
-                in platformCenters)
+            foreach (List<int> platform in platforms)
             {
                 if (platform.Count == 0)
-                {
                     continue;
-                }
 
-                // -----------------------------------------------------
-                // Восстанавливаем пропущенные строки.
-                //
-                // Например:
-                //
-                // 337
-                // 359
-                // 403
-                //
-                // при шаге 22 получаем:
-                //
-                // 337
-                // 359
-                // 381
-                // 403
-                // -----------------------------------------------------
+                List<int> rows = ReconstructRows(platform, step);
 
-                List<int> reconstructed =
-                    ReconstructRows(
-                        platform,
-                        rowStep);
+                int number = 1;
 
-                int rowNumber = 1;
-
-                foreach (int y in reconstructed)
+                foreach (int y in rows)
                 {
-                    result.Add(
-                        new DetectedRow
-                        {
-                            Y = y,
-                            Height = EstimateDefaultRowHeight(
-                                areas),
-                            Platform = platformNumber,
-                            NumberInPlatform =
-                                rowNumber,
-                            IsReconstructed =
-                                !platform.Contains(y)
-                        });
-
-                    rowNumber++;
+                    result.Add(new DetectedRow
+                    {
+                        Y = y,
+                        Platform = platformNumber,
+                        NumberInPlatform = number++,
+                        IsReconstructed = !platform.Contains(y)
+                    });
                 }
 
                 platformNumber++;
@@ -719,624 +342,279 @@ namespace ScreenReader
             return result;
         }
 
-        // =============================================================
-        // ОПРЕДЕЛЕНИЕ ТЕКСТОВОГО ПИКСЕЛЯ
-        // =============================================================
-
-        private static bool IsTextPixel(
-            Color pixel,
-            int brightness)
+        private static List<int> FindTextCenters(
+            Bitmap screenshot,
+            Dictionary<string, Rectangle> areas)
         {
-            // Основной вариант:
-            // тёмный текст на светлом фоне.
+            int width = screenshot.Width;
+            int height = screenshot.Height;
 
-            if (brightness < 150)
+            List<(int left, int right)> xRanges =
+                new List<(int left, int right)>();
+
+            foreach (string name in AreaNames)
             {
-                return true;
+                if (!areas.TryGetValue(name, out Rectangle r))
+                    continue;
+
+                int left = Math.Max(0, r.Left);
+                int right = Math.Min(width - 1, r.Right - 1);
+
+                if (right > left)
+                    xRanges.Add((left, right));
             }
 
-            // Дополнительный вариант:
-            // насыщенный цветной текст.
+            if (xRanges.Count == 0)
+                return new List<int>();
 
-            int max =
-                Math.Max(
-                    pixel.R,
-                    Math.Max(
-                        pixel.G,
-                        pixel.B));
+            int[] density = new int[height];
 
-            int min =
-                Math.Min(
-                    pixel.R,
-                    Math.Min(
-                        pixel.G,
-                        pixel.B));
-
-            int difference =
-                max - min;
-
-            if (difference > 70 &&
-                brightness < 210)
+            for (int y = 0; y < height; y++)
             {
-                return true;
+                int dark = 0;
+                int total = 0;
+
+                foreach ((int left, int right) range in xRanges)
+                {
+                    for (int x = range.left; x <= range.right; x += 2)
+                    {
+                        Color c = screenshot.GetPixel(x, y);
+                        int brightness = (c.R + c.G + c.B) / 3;
+
+                        if (brightness < 155)
+                            dark++;
+
+                        total++;
+                    }
+                }
+
+                density[y] = total == 0
+                    ? 0
+                    : (dark * 1000) / total;
             }
 
-            return false;
-        }
+            // Сглаживание.
+            int[] smooth = new int[height];
 
-        // =============================================================
-        // СГЛАЖИВАНИЕ
-        // =============================================================
-
-        private static double[] SmoothVerticalScore(
-            double[] input)
-        {
-            double[] output =
-                new double[input.Length];
-
-            for (int y = 0;
-                 y < input.Length;
-                 y++)
+            for (int y = 0; y < height; y++)
             {
-                double sum = 0;
-
+                int sum = 0;
                 int count = 0;
 
-                for (int offset = -2;
-                     offset <= 2;
-                     offset++)
+                for (int d = -2; d <= 2; d++)
                 {
-                    int index =
-                        y + offset;
+                    int yy = y + d;
 
-                    if (index < 0 ||
-                        index >= input.Length)
-                    {
+                    if (yy < 0 || yy >= height)
                         continue;
-                    }
 
-                    sum +=
-                        input[index];
-
+                    sum += density[yy];
                     count++;
                 }
 
-                output[y] =
-                    count == 0
-                        ? 0
-                        : sum / count;
+                smooth[y] = count == 0 ? 0 : sum / count;
             }
 
-            return output;
-        }
+            // Ищем полосы текста.
+            const int threshold = 8;
+            List<(int top, int bottom)> bands =
+                new List<(int top, int bottom)>();
 
-        // =============================================================
-        // ПОИСК ТЕКСТОВЫХ ПОЛОС
-        // =============================================================
-
-        private static List<TextBand> FindTextBands(
-            double[] score)
-        {
-            List<TextBand> bands =
-                new List<TextBand>();
-
-            // Порог намеренно невысокий.
-            // Мы не хотим отсеять тонкий текст.
-
-            const double threshold =
-                0.004;
-
-            bool inside = false;
-
+            bool active = false;
             int start = 0;
 
-            for (int y = 0;
-                 y < score.Length;
-                 y++)
+            for (int y = 0; y < height; y++)
             {
-                bool active =
-                    score[y] >= threshold;
+                bool isActive = smooth[y] >= threshold;
 
-                if (active && !inside)
+                if (isActive && !active)
                 {
-                    inside = true;
-
+                    active = true;
                     start = y;
                 }
 
-                if (!active && inside)
+                if (!isActive && active)
                 {
-                    int end =
-                        y - 1;
+                    int bottom = y - 1;
 
-                    if (end - start + 1 >= 2)
-                    {
-                        bands.Add(
-                            new TextBand
-                            {
-                                Top = start,
-                                Bottom = end,
-                                CenterY =
-                                    (start + end) / 2
-                            });
-                    }
+                    if (bottom - start + 1 >= 2)
+                        bands.Add((start, bottom));
 
-                    inside = false;
+                    active = false;
                 }
             }
 
-            if (inside)
+            if (active)
             {
-                int end =
-                    score.Length - 1;
+                int bottom = height - 1;
 
-                if (end - start + 1 >= 2)
+                if (bottom - start + 1 >= 2)
+                    bands.Add((start, bottom));
+            }
+
+            List<int> centers = new List<int>();
+
+            foreach ((int top, int bottom) band in bands)
+            {
+                int center = (band.top + band.bottom) / 2;
+
+                if (centers.Count == 0 ||
+                    center - centers[^1] >= 6)
                 {
-                    bands.Add(
-                        new TextBand
-                        {
-                            Top = start,
-                            Bottom = end,
-                            CenterY =
-                                (start + end) / 2
-                        });
+                    centers.Add(center);
                 }
             }
 
-            return bands;
+            return centers;
         }
 
-        // =============================================================
-        // ОБЪЕДИНЕНИЕ БЛИЗКИХ ЦЕНТРОВ
-        // =============================================================
-
-        private static List<int> MergeCloseCenters(
-            List<int> centers,
-            int maximumDistance)
-        {
-            if (centers.Count == 0)
-            {
-                return centers;
-            }
-
-            centers =
-                centers
-                    .OrderBy(
-                        y => y)
-                    .ToList();
-
-            List<int> result =
-                new List<int>();
-
-            int currentSum =
-                centers[0];
-
-            int currentCount = 1;
-
-            for (int i = 1;
-                 i < centers.Count;
-                 i++)
-            {
-                int previous =
-                    centers[i - 1];
-
-                int current =
-                    centers[i];
-
-                if (current - previous <= maximumDistance)
-                {
-                    currentSum += current;
-                    currentCount++;
-                }
-                else
-                {
-                    result.Add(
-                        currentSum /
-                        currentCount);
-
-                    currentSum =
-                        current;
-
-                    currentCount = 1;
-                }
-            }
-
-            result.Add(
-                currentSum /
-                currentCount);
-
-            return result;
-        }
-
-        // =============================================================
-        // ОСНОВНОЙ ШАГ
-        // =============================================================
-
-        private static int FindDominantStep(
-            List<int> centers)
+        private static int FindDominantStep(List<int> centers)
         {
             if (centers.Count < 2)
-            {
                 return 0;
-            }
 
-            Dictionary<int, int> frequencies =
+            Dictionary<int, int> votes =
                 new Dictionary<int, int>();
 
-            for (int i = 1;
-                 i < centers.Count;
-                 i++)
+            for (int i = 1; i < centers.Count; i++)
             {
                 int difference =
-                    centers[i] -
-                    centers[i - 1];
+                    centers[i] - centers[i - 1];
 
-                if (difference < 5 ||
-                    difference > 100)
-                {
+                if (difference < 8 || difference > 80)
                     continue;
-                }
 
-                // Небольшая терпимость к OCR/пиксельным ошибкам.
+                // Разрешаем ошибку измерения ±2 пикселя.
                 int normalized =
-                    NormalizeStep(
-                        difference);
+                    Math.Max(
+                        1,
+                        (int)Math.Round(difference / 2.0) * 2);
 
-                if (!frequencies.ContainsKey(
-                        normalized))
-                {
-                    frequencies[normalized] = 0;
-                }
+                if (!votes.ContainsKey(normalized))
+                    votes[normalized] = 0;
 
-                frequencies[normalized]++;
+                votes[normalized]++;
             }
 
-            if (frequencies.Count == 0)
-            {
+            if (votes.Count == 0)
                 return 0;
-            }
 
-            return frequencies
-                .OrderByDescending(
-                    pair => pair.Value)
-                .ThenBy(
-                    pair =>
-                        Math.Abs(
-                            pair.Key - 20))
+            return votes
+                .OrderByDescending(x => x.Value)
+                .ThenBy(x => Math.Abs(x.Key - 20))
                 .First()
                 .Key;
         }
 
-        // =============================================================
-        // НОРМАЛИЗАЦИЯ ШАГА
-        // =============================================================
-
-        private static int NormalizeStep(
-            int difference)
-        {
-            // Не фиксируем шаг 20 или 22.
-            //
-            // Просто сглаживаем небольшие ошибки измерения.
-
-            if (difference <= 0)
-            {
-                return difference;
-            }
-
-            return difference;
-        }
-
-        // =============================================================
-        // РАЗДЕЛЕНИЕ НА ПЛОЩАДКИ
-        // =============================================================
-
-        private static List<List<int>> SplitIntoPlatforms(
+        private static List<List<int>> SplitPlatforms(
             List<int> centers,
-            int rowStep)
+            int step)
         {
             List<List<int>> platforms =
                 new List<List<int>>();
 
             if (centers.Count == 0)
-            {
                 return platforms;
-            }
 
-            List<int> current =
-                new List<int>();
-
-            current.Add(
-                centers[0]);
-
-            for (int i = 1;
-                 i < centers.Count;
-                 i++)
+            List<int> current = new List<int>
             {
-                int previous =
-                    centers[i - 1];
+                centers[0]
+            };
 
-                int currentY =
-                    centers[i];
-
+            for (int i = 1; i < centers.Count; i++)
+            {
                 int difference =
-                    currentY -
-                    previous;
+                    centers[i] - centers[i - 1];
 
-                // -----------------------------------------------------
-                // Большой разрыв = новая площадка.
-                //
-                // Порог в 2.2 шага достаточно мягкий.
-                // -----------------------------------------------------
-
-                if (difference >
-                    Math.Max(
-                        rowStep * 2.2,
-                        rowStep + 12))
+                // Обычный корпус: примерно один шаг.
+                // Разрыв больше 1.8 шага считаем новой площадкой.
+                if (difference > step * 1.8)
                 {
-                    platforms.Add(
-                        current);
-
-                    current =
-                        new List<int>();
+                    platforms.Add(current);
+                    current = new List<int>();
                 }
 
-                current.Add(
-                    currentY);
+                current.Add(centers[i]);
             }
 
             if (current.Count > 0)
-            {
-                platforms.Add(
-                    current);
-            }
+                platforms.Add(current);
 
             return platforms;
         }
-
-        // =============================================================
-        // ВОССТАНОВЛЕНИЕ ПРОПУЩЕННЫХ СТРОК
-        // =============================================================
 
         private static List<int> ReconstructRows(
             List<int> rows,
             int step)
         {
-            if (rows.Count <= 1 ||
-                step <= 0)
+            if (rows.Count <= 1 || step <= 0)
+                return rows.OrderBy(x => x).ToList();
+
+            rows = rows.OrderBy(x => x).ToList();
+
+            List<int> result = new List<int>();
+
+            for (int i = 0; i < rows.Count - 1; i++)
             {
-                return rows
-                    .OrderBy(
-                        y => y)
-                    .ToList();
-            }
+                int current = rows[i];
+                int next = rows[i + 1];
 
-            rows =
-                rows
-                    .OrderBy(
-                        y => y)
-                    .ToList();
+                result.Add(current);
 
-            List<int> result =
-                new List<int>();
-
-            for (int i = 0;
-                 i < rows.Count - 1;
-                 i++)
-            {
-                int current =
-                    rows[i];
-
-                int next =
-                    rows[i + 1];
-
-                result.Add(
-                    current);
-
-                int difference =
-                    next -
-                    current;
-
-                int missing =
+                int difference = next - current;
+                int count =
                     (int)Math.Round(
-                        (double)difference /
-                        step) - 1;
+                        (double)difference / step);
 
-                // Защита от случайного огромного разрыва.
-                // Разделение площадок сюда обычно не попадёт,
-                // потому что SplitIntoPlatforms уже разделил их.
-
-                if (missing > 0 &&
-                    missing <= 5)
+                if (count > 1 && count <= 6)
                 {
-                    for (int j = 1;
-                         j <= missing;
-                         j++)
+                    for (int n = 1; n < count; n++)
                     {
-                        int reconstructed =
-                            current +
-                            step * j;
+                        int y = current + step * n;
 
-                        if (reconstructed < next)
-                        {
-                            result.Add(
-                                reconstructed);
-                        }
+                        if (y < next)
+                            result.Add(y);
                     }
                 }
             }
 
-            result.Add(
-                rows[rows.Count - 1]);
+            result.Add(rows[^1]);
 
             return result
                 .Distinct()
-                .OrderBy(
-                    y => y)
+                .OrderBy(x => x)
                 .ToList();
         }
 
         // =============================================================
-        // ВЫСОТА СТРОКИ
-        // =============================================================
-
-        private static int EstimateRowHeight(
-            List<TextBand> bands,
-            int center)
-        {
-            TextBand? nearest =
-                bands
-                    .OrderBy(
-                        band =>
-                            Math.Abs(
-                                band.CenterY -
-                                center))
-                    .FirstOrDefault();
-
-            if (nearest == null)
-            {
-                return 20;
-            }
-
-            int height =
-                nearest.Bottom -
-                nearest.Top +
-                1;
-
-            return Math.Max(
-                height + 4,
-                12);
-        }
-
-        // =============================================================
-        // ВЫСОТА ПО НАСТРОЕННЫМ ОБЛАСТЯМ
-        // =============================================================
-
-        private static int EstimateDefaultRowHeight(
-            Dictionary<string, Rectangle> areas)
-        {
-            List<int> heights =
-                new List<int>();
-
-            foreach (string name in AreaNames)
-            {
-                if (areas.TryGetValue(
-                        name,
-                        out Rectangle rectangle))
-                {
-                    heights.Add(
-                        rectangle.Height);
-                }
-            }
-
-            if (heights.Count == 0)
-            {
-                return 20;
-            }
-
-            return Math.Max(
-                heights.Max(),
-                12);
-        }
-
-        // =============================================================
-        // ОТЧЁТ
-        // =============================================================
-
-        private static string BuildDetectionReport(
-            List<DetectedRow> rows)
-        {
-            if (rows.Count == 0)
-            {
-                return "Корпуса не найдены.";
-            }
-
-            int platformCount =
-                rows
-                    .Select(
-                        row => row.Platform)
-                    .Distinct()
-                    .Count();
-
-            string text =
-                "АВТОМАТИЧЕСКОЕ ОБНАРУЖЕНИЕ\r\n" +
-                "==============================\r\n\r\n" +
-
-                $"Найдено строк: {rows.Count}\r\n" +
-                $"Площадок: {platformCount}\r\n\r\n";
-
-            int currentPlatform = -1;
-
-            foreach (DetectedRow row in rows)
-            {
-                if (row.Platform != currentPlatform)
-                {
-                    currentPlatform =
-                        row.Platform;
-
-                    text +=
-                        $"ПЛОЩАДКА {currentPlatform}\r\n";
-                }
-
-                text +=
-                    $"  Корпус {row.NumberInPlatform}" +
-                    $"   Y={row.Y}";
-
-                if (row.IsReconstructed)
-                {
-                    text +=
-                        "   [восстановлен по шагу]";
-                }
-
-                text +=
-                    "\r\n";
-            }
-
-            text +=
-                "\r\n" +
-                "Если рамки на экране попадают " +
-                "на строки корпусов — отлично.";
-
-            return text;
-        }
-
-        // =============================================================
-        // OCR ОДНОЙ СТРОКИ
+        // OCR
         // =============================================================
 
         private static string[] ReadRow(
             Bitmap screenshot,
             Dictionary<string, Rectangle> areas,
-            DetectedRow row)
+            int centerY)
         {
-            string[] values =
-                new string[AreaNames.Length];
+            string[] values = new string[AreaNames.Length];
 
-            for (int i = 0;
-                 i < AreaNames.Length;
-                 i++)
+            for (int i = 0; i < AreaNames.Length; i++)
             {
-                string name =
-                    AreaNames[i];
+                Rectangle template = areas[AreaNames[i]];
 
-                Rectangle template =
-                    areas[name];
-
-                int newY =
-                    row.Y -
+                int y =
+                    centerY -
                     template.Height / 2;
 
-                Rectangle area =
-                    new Rectangle(
-                        template.X,
-                        newY,
-                        template.Width,
-                        template.Height);
+                Rectangle area = new Rectangle(
+                    template.X,
+                    y,
+                    template.Width,
+                    template.Height);
 
-                area =
-                    ClampRectangle(
-                        area,
-                        screenshot.Width,
-                        screenshot.Height);
+                area = ClampRectangle(
+                    area,
+                    screenshot.Width,
+                    screenshot.Height);
 
                 using Bitmap crop =
                     screenshot.Clone(
@@ -1344,136 +622,16 @@ namespace ScreenReader
                         PixelFormat.Format32bppArgb);
 
                 values[i] =
-                    RunSparseOcr(
-                        crop).Trim();
+                    RunSparseOcr(crop).Trim();
             }
 
             return values;
         }
 
-        // =============================================================
-        // ОГРАНИЧЕНИЕ ПРЯМОУГОЛЬНИКА ЭКРАНОМ
-        // =============================================================
-
-        private static Rectangle ClampRectangle(
-            Rectangle rectangle,
-            int width,
-            int height)
-        {
-            int x =
-                Math.Max(
-                    0,
-                    rectangle.X);
-
-            int y =
-                Math.Max(
-                    0,
-                    rectangle.Y);
-
-            int right =
-                Math.Min(
-                    width,
-                    rectangle.Right);
-
-            int bottom =
-                Math.Min(
-                    height,
-                    rectangle.Bottom);
-
-            if (right <= x)
-            {
-                right =
-                    Math.Min(
-                        width,
-                        x + 1);
-            }
-
-            if (bottom <= y)
-            {
-                bottom =
-                    Math.Min(
-                        height,
-                        y + 1);
-            }
-
-            return new Rectangle(
-                x,
-                y,
-                right - x,
-                bottom - y);
-        }
-
-        // =============================================================
-        // РЕЗУЛЬТАТ OCR
-        // =============================================================
-
-        private static string BuildOcrResult(
-            string[] values)
-        {
-            return
-                "РЕЗУЛЬТАТ СЧИТЫВАНИЯ\r\n" +
-                "==============================\r\n\r\n" +
-
-                "Корпус:\r\n" +
-                values[0] +
-                "\r\n\r\n" +
-
-                "Корм за час:\r\n" +
-                values[1] +
-                "\r\n\r\n" +
-
-                "Вода за час:\r\n" +
-                values[2] +
-                "\r\n\r\n" +
-
-                "Корм с 00:00:\r\n" +
-                values[3] +
-                "\r\n\r\n" +
-
-                "Вода с 00:00:\r\n" +
-                values[4];
-        }
-
-        // =============================================================
-        // СКРИНШОТ
-        // =============================================================
-
-        private static Bitmap CaptureScreen()
-        {
-            Rectangle screenBounds =
-                Screen.PrimaryScreen.Bounds;
-
-            Bitmap screenshot =
-                new Bitmap(
-                    screenBounds.Width,
-                    screenBounds.Height,
-                    PixelFormat.Format32bppArgb);
-
-            using Graphics graphics =
-                Graphics.FromImage(
-                    screenshot);
-
-            graphics.CopyFromScreen(
-                screenBounds.Left,
-                screenBounds.Top,
-                0,
-                0,
-                screenBounds.Size);
-
-            return screenshot;
-        }
-
-        // =============================================================
-        // SPARSE TEXT
-        // =============================================================
-
-        private static string RunSparseOcr(
-            Bitmap source)
+        private static string RunSparseOcr(Bitmap source)
         {
             using Bitmap enlarged =
-                ResizeImage(
-                    source,
-                    3);
+                ResizeImage(source, 3);
 
             string tessdataPath =
                 Path.Combine(
@@ -1495,14 +653,10 @@ namespace ScreenReader
 
             enlarged.Save(
                 stream,
-                ImageFormat.Png);
-
-            byte[] bytes =
-                stream.ToArray();
+                System.Drawing.Imaging.ImageFormat.Png);
 
             using Pix pix =
-                Pix.LoadFromMemory(
-                    bytes);
+                Pix.LoadFromMemory(stream.ToArray());
 
             using Page page =
                 engine.Process(
@@ -1511,10 +665,6 @@ namespace ScreenReader
 
             return page.GetText();
         }
-
-        // =============================================================
-        // УВЕЛИЧЕНИЕ
-        // =============================================================
 
         private static Bitmap ResizeImage(
             Bitmap source,
@@ -1527,8 +677,7 @@ namespace ScreenReader
                     PixelFormat.Format24bppRgb);
 
             using Graphics graphics =
-                Graphics.FromImage(
-                    result);
+                Graphics.FromImage(result);
 
             graphics.InterpolationMode =
                 InterpolationMode.HighQualityBicubic;
@@ -1551,98 +700,99 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // СОХРАНЕНИЕ ОБЛАСТЕЙ
+        // ОБЛАСТИ
         // =============================================================
+
+        private static Dictionary<string, Rectangle> SelectAreas(
+            Form form)
+        {
+            Dictionary<string, Rectangle> areas =
+                new Dictionary<string, Rectangle>();
+
+            form.Hide();
+            Application.DoEvents();
+            System.Threading.Thread.Sleep(300);
+
+            using Bitmap screenshot = CaptureScreen();
+
+            for (int i = 0; i < AreaNames.Length; i++)
+            {
+                using SelectionForm selection =
+                    new SelectionForm(
+                        screenshot,
+                        AreaNames[i]);
+
+                if (selection.ShowDialog() != DialogResult.OK)
+                {
+                    form.Show();
+                    form.Activate();
+                    return areas;
+                }
+
+                Rectangle r =
+                    selection.SelectedRectangle;
+
+                if (r.Width <= 5 || r.Height <= 5)
+                {
+                    form.Show();
+                    form.Activate();
+                    return areas;
+                }
+
+                areas[AreaNames[i]] = r;
+            }
+
+            form.Show();
+            form.Activate();
+
+            return areas;
+        }
 
         private static void SaveAreas(
             Dictionary<string, Rectangle> areas)
         {
             using StreamWriter writer =
-                new StreamWriter(
-                    AreasFile,
-                    false);
+                new StreamWriter(AreasFile, false);
 
             foreach (string name in AreaNames)
             {
-                if (!areas.TryGetValue(
-                        name,
-                        out Rectangle rectangle))
-                {
-                    continue;
-                }
+                Rectangle r = areas[name];
 
                 writer.WriteLine(
-                    $"{name}|" +
-                    $"{rectangle.X}|" +
-                    $"{rectangle.Y}|" +
-                    $"{rectangle.Width}|" +
-                    $"{rectangle.Height}");
+                    $"{name}|{r.X}|{r.Y}|{r.Width}|{r.Height}");
             }
         }
-
-        // =============================================================
-        // ЗАГРУЗКА ОБЛАСТЕЙ
-        // =============================================================
 
         private static Dictionary<string, Rectangle> LoadAreas()
         {
             Dictionary<string, Rectangle> areas =
                 new Dictionary<string, Rectangle>();
 
-            if (!File.Exists(
-                    AreasFile))
-            {
+            if (!File.Exists(AreasFile))
                 return areas;
-            }
 
             try
             {
-                string[] lines =
-                    File.ReadAllLines(
-                        AreasFile);
-
-                foreach (string line in lines)
+                foreach (string line in File.ReadAllLines(AreasFile))
                 {
-                    string[] parts =
-                        line.Split('|');
+                    string[] parts = line.Split('|');
 
                     if (parts.Length != 5)
-                    {
                         continue;
-                    }
 
-                    string name =
-                        parts[0];
-
-                    if (!int.TryParse(
-                            parts[1],
-                            out int x))
-                    {
+                    if (!int.TryParse(parts[1], out int x))
                         continue;
-                    }
 
-                    if (!int.TryParse(
-                            parts[2],
-                            out int y))
-                    {
+                    if (!int.TryParse(parts[2], out int y))
                         continue;
-                    }
 
-                    if (!int.TryParse(
-                            parts[3],
-                            out int width))
-                    {
+                    if (!int.TryParse(parts[3], out int width))
                         continue;
-                    }
 
-                    if (!int.TryParse(
-                            parts[4],
-                            out int height))
-                    {
+                    if (!int.TryParse(parts[4], out int height))
                         continue;
-                    }
 
-                    areas[name] =
+                    areas[parts[0]] =
                         new Rectangle(
                             x,
                             y,
@@ -1659,101 +809,148 @@ namespace ScreenReader
         }
 
         // =============================================================
-        // МОДЕЛЬ ОБНАРУЖЕННОЙ СТРОКИ
+        // ЭКРАН
         // =============================================================
+
+        private static Bitmap CaptureScreen()
+        {
+            Rectangle bounds =
+                Screen.PrimaryScreen.Bounds;
+
+            Bitmap screenshot =
+                new Bitmap(
+                    bounds.Width,
+                    bounds.Height,
+                    PixelFormat.Format32bppArgb);
+
+            using Graphics graphics =
+                Graphics.FromImage(screenshot);
+
+            graphics.CopyFromScreen(
+                bounds.Left,
+                bounds.Top,
+                0,
+                0,
+                bounds.Size);
+
+            return screenshot;
+        }
+
+        private static Rectangle ClampRectangle(
+            Rectangle rectangle,
+            int width,
+            int height)
+        {
+            int left =
+                Math.Max(0, rectangle.Left);
+
+            int top =
+                Math.Max(0, rectangle.Top);
+
+            int right =
+                Math.Min(width, rectangle.Right);
+
+            int bottom =
+                Math.Min(height, rectangle.Bottom);
+
+            if (right <= left)
+                right = Math.Min(width, left + 1);
+
+            if (bottom <= top)
+                bottom = Math.Min(height, top + 1);
+
+            return new Rectangle(
+                left,
+                top,
+                right - left,
+                bottom - top);
+        }
+
+        private static string BuildDetectionReport(
+            List<DetectedRow> rows)
+        {
+            if (rows.Count == 0)
+                return "Корпуса не найдены.";
+
+            int platformCount =
+                rows.Select(x => x.Platform).Distinct().Count();
+
+            string text =
+                "АВТОМАТИЧЕСКОЕ ОБНАРУЖЕНИЕ\r\n" +
+                "==============================\r\n\r\n" +
+                $"Найдено строк: {rows.Count}\r\n" +
+                $"Площадок: {platformCount}\r\n\r\n";
+
+            int currentPlatform = -1;
+
+            foreach (DetectedRow row in rows)
+            {
+                if (row.Platform != currentPlatform)
+                {
+                    currentPlatform = row.Platform;
+                    text +=
+                        $"ПЛОЩАДКА {currentPlatform}\r\n";
+                }
+
+                text +=
+                    $"  Корпус {row.NumberInPlatform}" +
+                    $"   Y={row.Y}";
+
+                if (row.IsReconstructed)
+                    text += "   [восстановлен по шагу]";
+
+                text += "\r\n";
+            }
+
+            return text;
+        }
 
         public class DetectedRow
         {
             public int Y { get; set; }
-
-            public int Height { get; set; }
-
             public int Platform { get; set; }
-
             public int NumberInPlatform { get; set; }
-
             public bool IsReconstructed { get; set; }
-        }
-
-        // =============================================================
-        // ТЕКСТОВАЯ ПОЛОСА
-        // =============================================================
-
-        private class TextBand
-        {
-            public int Top { get; set; }
-
-            public int Bottom { get; set; }
-
-            public int CenterY { get; set; }
         }
     }
 
     // =================================================================
-    // ОКНО ВЫБОРА ОБЛАСТИ
+    // ВЫБОР OCR-ОБЛАСТИ
     // =================================================================
 
     public class SelectionForm : Form
     {
         private readonly Bitmap screenshot;
-
         private readonly string areaName;
 
         private Point startPoint;
-
         private Point currentPoint;
-
         private bool selecting;
 
-        public Rectangle SelectedRectangle
-        {
-            get;
-            private set;
-        }
+        public Rectangle SelectedRectangle { get; private set; }
 
         public SelectionForm(
             Bitmap screenshot,
             string areaName)
         {
-            this.screenshot =
-                screenshot;
+            this.screenshot = screenshot;
+            this.areaName = areaName;
 
-            this.areaName =
-                areaName;
-
-            FormBorderStyle =
-                FormBorderStyle.None;
-
-            StartPosition =
-                FormStartPosition.Manual;
-
-            Bounds =
-                Screen.PrimaryScreen.Bounds;
-
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            Bounds = Screen.PrimaryScreen.Bounds;
             TopMost = true;
-
-            Cursor =
-                Cursors.Cross;
-
+            Cursor = Cursors.Cross;
             DoubleBuffered = true;
-
             KeyPreview = true;
 
-            MouseDown +=
-                SelectionForm_MouseDown;
-
-            MouseMove +=
-                SelectionForm_MouseMove;
-
-            MouseUp +=
-                SelectionForm_MouseUp;
-
-            KeyDown +=
-                SelectionForm_KeyDown;
+            MouseDown += SelectionForm_MouseDown;
+            MouseMove += SelectionForm_MouseMove;
+            MouseUp += SelectionForm_MouseUp;
+            KeyDown += SelectionForm_KeyDown;
         }
 
-        protected override void OnPaint(
-            PaintEventArgs e)
+        protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
@@ -1763,17 +960,14 @@ namespace ScreenReader
 
             using SolidBrush overlay =
                 new SolidBrush(
-                    Color.FromArgb(
-                        100,
-                        Color.Black));
+                    Color.FromArgb(100, Color.Black));
 
             e.Graphics.FillRectangle(
                 overlay,
                 ClientRectangle);
 
             using SolidBrush textBrush =
-                new SolidBrush(
-                    Color.White);
+                new SolidBrush(Color.White);
 
             using Font font =
                 new Font(
@@ -1782,59 +976,50 @@ namespace ScreenReader
                     FontStyle.Bold);
 
             e.Graphics.DrawString(
-                "Выберите: " +
-                areaName,
+                "Выберите: " + areaName,
                 font,
                 textBrush,
                 20,
                 20);
 
-            if (selecting)
-            {
-                Rectangle rectangle =
-                    GetRectangle(
-                        startPoint,
-                        currentPoint);
+            if (!selecting)
+                return;
 
-                using SolidBrush selectedBrush =
-                    new SolidBrush(
-                        Color.FromArgb(
-                            80,
-                            Color.White));
+            Rectangle rectangle =
+                GetRectangle(
+                    startPoint,
+                    currentPoint);
 
-                using Pen pen =
-                    new Pen(
-                        Color.Red,
-                        3);
+            using SolidBrush selectedBrush =
+                new SolidBrush(
+                    Color.FromArgb(
+                        80,
+                        Color.White));
 
-                e.Graphics.FillRectangle(
-                    selectedBrush,
-                    rectangle);
+            using Pen pen =
+                new Pen(
+                    Color.Red,
+                    3);
 
-                e.Graphics.DrawRectangle(
-                    pen,
-                    rectangle);
-            }
+            e.Graphics.FillRectangle(
+                selectedBrush,
+                rectangle);
+
+            e.Graphics.DrawRectangle(
+                pen,
+                rectangle);
         }
 
         private void SelectionForm_MouseDown(
             object? sender,
             MouseEventArgs e)
         {
-            if (e.Button !=
-                MouseButtons.Left)
-            {
+            if (e.Button != MouseButtons.Left)
                 return;
-            }
 
             selecting = true;
-
-            startPoint =
-                e.Location;
-
-            currentPoint =
-                e.Location;
-
+            startPoint = e.Location;
+            currentPoint = e.Location;
             Invalidate();
         }
 
@@ -1843,13 +1028,9 @@ namespace ScreenReader
             MouseEventArgs e)
         {
             if (!selecting)
-            {
                 return;
-            }
 
-            currentPoint =
-                e.Location;
-
+            currentPoint = e.Location;
             Invalidate();
         }
 
@@ -1857,16 +1038,11 @@ namespace ScreenReader
             object? sender,
             MouseEventArgs e)
         {
-            if (e.Button !=
-                MouseButtons.Left)
-            {
+            if (e.Button != MouseButtons.Left)
                 return;
-            }
 
             selecting = false;
-
-            currentPoint =
-                e.Location;
+            currentPoint = e.Location;
 
             SelectedRectangle =
                 GetRectangle(
@@ -1874,11 +1050,9 @@ namespace ScreenReader
                     currentPoint);
 
             if (SelectedRectangle.Width > 5 &&
-                SelectedRectangle.Height > 3)
+                SelectedRectangle.Height > 5)
             {
-                DialogResult =
-                    DialogResult.OK;
-
+                DialogResult = DialogResult.OK;
                 Close();
             }
 
@@ -1889,12 +1063,9 @@ namespace ScreenReader
             object? sender,
             KeyEventArgs e)
         {
-            if (e.KeyCode ==
-                Keys.Escape)
+            if (e.KeyCode == Keys.Escape)
             {
-                DialogResult =
-                    DialogResult.Cancel;
-
+                DialogResult = DialogResult.Cancel;
                 Close();
             }
         }
@@ -1903,78 +1074,41 @@ namespace ScreenReader
             Point p1,
             Point p2)
         {
-            int x =
-                Math.Min(
-                    p1.X,
-                    p2.X);
-
-            int y =
-                Math.Min(
-                    p1.Y,
-                    p2.Y);
-
-            int width =
-                Math.Abs(
-                    p1.X -
-                    p2.X);
-
-            int height =
-                Math.Abs(
-                    p1.Y -
-                    p2.Y);
-
             return new Rectangle(
-                x,
-                y,
-                width,
-                height);
+                Math.Min(p1.X, p2.X),
+                Math.Min(p1.Y, p2.Y),
+                Math.Abs(p1.X - p2.X),
+                Math.Abs(p1.Y - p2.Y));
         }
     }
 
     // =================================================================
-    // ОКНО ПРОВЕРКИ АВТОМАТИЧЕСКОГО ОБНАРУЖЕНИЯ
+    // ПРЕДПРОСМОТР АВТОМАТИЧЕСКИХ СТРОК
     // =================================================================
 
-    public class RowDetectionPreviewForm : Form
+    public class RowPreviewForm : Form
     {
         private readonly Bitmap screenshot;
-
         private readonly List<Program.DetectedRow> rows;
 
-        public RowDetectionPreviewForm(
+        public RowPreviewForm(
             Bitmap screenshot,
             List<Program.DetectedRow> rows)
         {
-            this.screenshot =
-                screenshot;
+            this.screenshot = screenshot;
+            this.rows = rows;
 
-            this.rows =
-                rows;
-
-            FormBorderStyle =
-                FormBorderStyle.None;
-
-            StartPosition =
-                FormStartPosition.Manual;
-
-            Bounds =
-                Screen.PrimaryScreen.Bounds;
-
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            Bounds = Screen.PrimaryScreen.Bounds;
             TopMost = true;
-
             DoubleBuffered = true;
-
             KeyPreview = true;
 
-            Cursor =
-                Cursors.Default;
-
-            KeyDown +=
-                RowDetectionPreviewForm_KeyDown;
+            KeyDown += RowPreviewForm_KeyDown;
         }
 
-        protected override void OnPaint(
-            PaintEventArgs e)
+        protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
@@ -1992,8 +1126,8 @@ namespace ScreenReader
                 background,
                 0,
                 0,
-                650,
-                120);
+                700,
+                125);
 
             using Font titleFont =
                 new Font(
@@ -2004,68 +1138,42 @@ namespace ScreenReader
             using Font infoFont =
                 new Font(
                     "Segoe UI",
-                    11,
-                    FontStyle.Regular);
+                    11);
 
-            using SolidBrush whiteBrush =
-                new SolidBrush(
-                    Color.White);
+            using SolidBrush white =
+                new SolidBrush(Color.White);
 
             e.Graphics.DrawString(
-                "Автоматически найденные корпуса",
+                "Автоматически найденные строки",
                 titleFont,
-                whiteBrush,
+                white,
                 15,
                 10);
 
             e.Graphics.DrawString(
-                "ESC — закрыть проверку",
-                infoFont,
-                whiteBrush,
-                15,
-                45);
-
-            e.Graphics.DrawString(
                 $"Найдено строк: {rows.Count}",
                 infoFont,
-                whiteBrush,
+                white,
                 15,
-                70);
+                48);
 
             e.Graphics.DrawString(
-                "Зелёный — найден по изображению, " +
-                "жёлтый — восстановлен по шагу",
+                "Зелёный — найденный текст; " +
+                "жёлтый — восстановленный по шагу; ESC — выход",
                 infoFont,
-                whiteBrush,
+                white,
                 15,
-                92);
+                75);
 
-            foreach (
-                Program.DetectedRow row
-                in rows)
+            foreach (Program.DetectedRow row in rows)
             {
-                int height =
-                    Math.Max(
-                        row.Height,
-                        12);
-
-                Rectangle rectangle =
-                    new Rectangle(
-                        0,
-                        row.Y -
-                        height / 2,
-                        ClientSize.Width,
-                        height);
-
                 Color lineColor =
                     row.IsReconstructed
                         ? Color.Yellow
                         : Color.Lime;
 
                 using Pen pen =
-                    new Pen(
-                        lineColor,
-                        2);
+                    new Pen(lineColor, 2);
 
                 e.Graphics.DrawLine(
                     pen,
@@ -2074,62 +1182,34 @@ namespace ScreenReader
                     ClientSize.Width,
                     row.Y);
 
-                using SolidBrush labelBackground =
-                    new SolidBrush(
-                        Color.FromArgb(
-                            180,
-                            Color.Black));
-
-                Rectangle labelRectangle =
-                    new Rectangle(
-                        5,
-                        Math.Max(
-                            0,
-                            row.Y - 14),
-                        250,
-                        28);
-
-                e.Graphics.FillRectangle(
-                    labelBackground,
-                    labelRectangle);
-
                 using Font rowFont =
                     new Font(
                         "Segoe UI",
-                        10,
+                        9,
                         FontStyle.Bold);
 
-                string text =
-                    $"П{row.Platform} " +
-                    $"Корпус {row.NumberInPlatform} " +
+                string label =
+                    $"П{row.Platform}  " +
+                    $"Корпус {row.NumberInPlatform}  " +
                     $"Y={row.Y}";
 
-                if (row.IsReconstructed)
-                {
-                    text +=
-                        " *";
-                }
-
                 e.Graphics.DrawString(
-                    text,
+                    label,
                     rowFont,
-                    whiteBrush,
-                    10,
+                    white,
+                    8,
                     Math.Max(
                         0,
                         row.Y - 12));
             }
         }
 
-        private void RowDetectionPreviewForm_KeyDown(
+        private void RowPreviewForm_KeyDown(
             object? sender,
             KeyEventArgs e)
         {
-            if (e.KeyCode ==
-                Keys.Escape)
-            {
+            if (e.KeyCode == Keys.Escape)
                 Close();
-            }
         }
     }
 }
