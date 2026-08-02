@@ -20,7 +20,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publish
-        run: dotnet publish ScreenReader.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
+        run: dotnet publish ScreenReader.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=false
 
       - name: Find published files
         shell: pwsh
@@ -32,9 +32,9 @@ jobs:
               Get-ChildItem $_.FullName
             }
 
-      - name: Upload EXE
+      - name: Upload application
         uses: actions/upload-artifact@v4
         with:
           name: ScreenReader
-          path: '**/publish/ScreenReader.exe'
+          path: '**/publish/**'
           if-no-files-found: error
