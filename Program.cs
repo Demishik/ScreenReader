@@ -74,13 +74,22 @@ namespace ScreenReader
                 Location = new Point(255, 80)
             };
 
+            Button showRowsButton = new Button
+            {
+                Text = "Показать строки",
+                Font = new Font("Segoe UI", 11),
+                Width = 220,
+                Height = 45,
+                Location = new Point(490, 80)
+            };
+
             Button readButton = new Button
             {
                 Text = "Считать данные",
                 Font = new Font("Segoe UI", 11),
                 Width = 220,
                 Height = 45,
-                Location = new Point(490, 80)
+                Location = new Point(725, 80)
             };
 
             TextBox result = new TextBox
@@ -98,6 +107,7 @@ namespace ScreenReader
             form.Controls.Add(instruction);
             form.Controls.Add(setupButton);
             form.Controls.Add(platformButton);
+            form.Controls.Add(showRowsButton);
             form.Controls.Add(readButton);
             form.Controls.Add(result);
 
@@ -217,6 +227,56 @@ namespace ScreenReader
 
                     result.Text =
                         "ОШИБКА НАСТРОЙКИ ПЛОЩАДОК:\r\n\r\n" +
+                        ex.Message;
+                }
+            };
+
+            // =========================================================
+            // ПОКАЗАТЬ РАССЧИТАННЫЕ СТРОКИ
+            // =========================================================
+
+            showRowsButton.Click += (sender, e) =>
+            {
+                if (platforms.Count == 0)
+                {
+                    result.Text =
+                        "Сначала нужно настроить площадки.";
+                    return;
+                }
+
+                try
+                {
+                    form.Hide();
+
+                    Application.DoEvents();
+
+                    System.Threading.Thread.Sleep(300);
+
+                    using Bitmap screenshot =
+                        CaptureScreen();
+
+                    using RowPreviewForm preview =
+                        new RowPreviewForm(
+                            screenshot,
+                            platforms);
+
+                    preview.ShowDialog();
+
+                    form.Show();
+                    form.Activate();
+
+                    result.Text =
+                        "Проверка строк завершена.\r\n\r\n" +
+                        "Если рамки точно попадают на строки корпусов, " +
+                        "можем переходить к автоматическому чтению.";
+                }
+                catch (Exception ex)
+                {
+                    form.Show();
+                    form.Activate();
+
+                    result.Text =
+                        "ОШИБКА ПОКАЗА СТРОК:\r\n\r\n" +
                         ex.Message;
                 }
             };
@@ -453,7 +513,16 @@ namespace ScreenReader
                         Number = platformNumber,
                         FirstRowY = firstY,
                         SecondRowY = secondY,
-                        RowStep = step
+                        RowStep = step,
+
+                        RowHeight =
+                            firstRectangle.Height,
+
+                        RowX =
+                            firstRectangle.X,
+
+                        RowWidth =
+                            firstRectangle.Width
                     });
             }
 
@@ -690,7 +759,10 @@ namespace ScreenReader
                     $"{platform.Number}|" +
                     $"{platform.FirstRowY}|" +
                     $"{platform.SecondRowY}|" +
-                    $"{platform.RowStep}");
+                    $"{platform.RowStep}|" +
+                    $"{platform.RowHeight}|" +
+                    $"{platform.RowX}|" +
+                    $"{platform.RowWidth}");
             }
         }
 
@@ -718,35 +790,106 @@ namespace ScreenReader
                     string[] parts =
                         line.Split('|');
 
-                    if (parts.Length != 4)
+                    // Старый формат:
+                    // Number|FirstY|SecondY|Step
+                    if (parts.Length == 4)
+                    {
+                        if (!int.TryParse(
+                                parts[0],
+                                out int number))
+                        {
+                            continue;
+                        }
+
+                        if (!int.TryParse(
+                                parts[1],
+                                out int firstY))
+                        {
+                            continue;
+                        }
+
+                        if (!int.TryParse(
+                                parts[2],
+                                out int secondY))
+                        {
+                            continue;
+                        }
+
+                        if (!int.TryParse(
+                                parts[3],
+                                out int step))
+                        {
+                            continue;
+                        }
+
+                        platforms.Add(
+                            new PlatformInfo
+                            {
+                                Number = number,
+                                FirstRowY = firstY,
+                                SecondRowY = secondY,
+                                RowStep = step,
+
+                                RowHeight = 20,
+                                RowX = 0,
+                                RowWidth = 800
+                            });
+
+                        continue;
+                    }
+
+                    // Новый формат:
+                    // Number|FirstY|SecondY|Step|Height|X|Width
+                    if (parts.Length != 7)
                     {
                         continue;
                     }
 
                     if (!int.TryParse(
                             parts[0],
-                            out int number))
+                            out int newNumber))
                     {
                         continue;
                     }
 
                     if (!int.TryParse(
                             parts[1],
-                            out int firstY))
+                            out int newFirstY))
                     {
                         continue;
                     }
 
                     if (!int.TryParse(
                             parts[2],
-                            out int secondY))
+                            out int newSecondY))
                     {
                         continue;
                     }
 
                     if (!int.TryParse(
                             parts[3],
-                            out int step))
+                            out int newStep))
+                    {
+                        continue;
+                    }
+
+                    if (!int.TryParse(
+                            parts[4],
+                            out int newHeight))
+                    {
+                        continue;
+                    }
+
+                    if (!int.TryParse(
+                            parts[5],
+                            out int newX))
+                    {
+                        continue;
+                    }
+
+                    if (!int.TryParse(
+                            parts[6],
+                            out int newWidth))
                     {
                         continue;
                     }
@@ -754,10 +897,13 @@ namespace ScreenReader
                     platforms.Add(
                         new PlatformInfo
                         {
-                            Number = number,
-                            FirstRowY = firstY,
-                            SecondRowY = secondY,
-                            RowStep = step
+                            Number = newNumber,
+                            FirstRowY = newFirstY,
+                            SecondRowY = newSecondY,
+                            RowStep = newStep,
+                            RowHeight = newHeight,
+                            RowX = newX,
+                            RowWidth = newWidth
                         });
                 }
             }
@@ -782,6 +928,12 @@ namespace ScreenReader
             public int SecondRowY { get; set; }
 
             public int RowStep { get; set; }
+
+            public int RowHeight { get; set; }
+
+            public int RowX { get; set; }
+
+            public int RowWidth { get; set; }
         }
     }
 
@@ -994,6 +1146,160 @@ namespace ScreenReader
                 y,
                 width,
                 height);
+        }
+    }
+
+    // =================================================================
+    // ОКНО ПРОВЕРКИ РАССЧИТАННЫХ СТРОК
+    // =================================================================
+
+    public class RowPreviewForm : Form
+    {
+        private readonly Bitmap screenshot;
+        private readonly List<Program.PlatformInfo> platforms;
+
+        public RowPreviewForm(
+            Bitmap screenshot,
+            List<Program.PlatformInfo> platforms)
+        {
+            this.screenshot = screenshot;
+            this.platforms = platforms;
+
+            FormBorderStyle =
+                FormBorderStyle.None;
+
+            StartPosition =
+                FormStartPosition.Manual;
+
+            Bounds =
+                Screen.PrimaryScreen.Bounds;
+
+            TopMost = true;
+            DoubleBuffered = true;
+            KeyPreview = true;
+            Cursor = Cursors.Default;
+
+            KeyDown += RowPreviewForm_KeyDown;
+        }
+
+        protected override void OnPaint(
+            PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            e.Graphics.DrawImage(
+                screenshot,
+                ClientRectangle);
+
+            using SolidBrush background =
+                new SolidBrush(
+                    Color.FromArgb(
+                        150,
+                        Color.Black));
+
+            e.Graphics.FillRectangle(
+                background,
+                0,
+                0,
+                520,
+                85);
+
+            using Font titleFont =
+                new Font(
+                    "Segoe UI",
+                    18,
+                    FontStyle.Bold);
+
+            using Font infoFont =
+                new Font(
+                    "Segoe UI",
+                    11,
+                    FontStyle.Regular);
+
+            using SolidBrush whiteBrush =
+                new SolidBrush(Color.White);
+
+            e.Graphics.DrawString(
+                "Проверка рассчитанных строк",
+                titleFont,
+                whiteBrush,
+                15,
+                10);
+
+            e.Graphics.DrawString(
+                "Нажмите ESC для выхода",
+                infoFont,
+                whiteBrush,
+                15,
+                48);
+
+            int colorIndex = 0;
+
+            foreach (Program.PlatformInfo platform in platforms)
+            {
+                for (int row = 0; row < 4; row++)
+                {
+                    int y =
+                        platform.FirstRowY +
+                        platform.RowStep * row;
+
+                    int height =
+                        platform.RowHeight;
+
+                    int x =
+                        platform.RowX;
+
+                    int width =
+                        platform.RowWidth;
+
+                    using Pen pen =
+                        new Pen(
+                            colorIndex % 2 == 0
+                                ? Color.Red
+                                : Color.Lime,
+                            3);
+
+                    Rectangle rectangle =
+                        new Rectangle(
+                            x,
+                            y,
+                            width,
+                            height);
+
+                    e.Graphics.DrawRectangle(
+                        pen,
+                        rectangle);
+
+                    using Font rowFont =
+                        new Font(
+                            "Segoe UI",
+                            12,
+                            FontStyle.Bold);
+
+                    string text =
+                        $"Площадка {platform.Number}, " +
+                        $"строка {row + 1}";
+
+                    e.Graphics.DrawString(
+                        text,
+                        rowFont,
+                        whiteBrush,
+                        x + 5,
+                        y + 2);
+                }
+
+                colorIndex++;
+            }
+        }
+
+        private void RowPreviewForm_KeyDown(
+            object? sender,
+            KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                Close();
+            }
         }
     }
 }
