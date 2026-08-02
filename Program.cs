@@ -346,7 +346,7 @@ namespace ScreenReader
 
                     screenshot.Save(
                         fileName,
-                        ImageFormat.Png);
+                        System.Drawing.Imaging.ImageFormat.Png);
 
                     form.Show();
                     form.Activate();
